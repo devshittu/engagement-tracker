@@ -1,0 +1,10 @@
+export { AlertIcon } from './AlertIcon';
+export { BacteriaIcon } from './BacteriaIcon';
+export { CheckIcon } from './CheckIcon';
+export { ClockIcon } from './ClockIcon';
+export { DNAIcon } from './DNAIcon';
+export { Logo } from './Logo';
+export { MicroscopeIcon } from './MicroscopeIcon';
+export { MoreIcon } from './MoreIcon';
+export { NumberIcon } from './NumberIcon';
+export { VirusIcon } from './VirusIcon';

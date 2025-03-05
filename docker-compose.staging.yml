@@ -1,0 +1,97 @@
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - letsencrypt-certs:/etc/nginx/certs
+      - letsencrypt-vhost-d:/etc/nginx/vhost.d
+      - letsencrypt-html:/usr/share/nginx/html
+    networks:
+      - my_media_network
+    env_file:
+      - .env.docker-compose
+
+  letsencrypt:
+    image: nginxproxy/acme-companion
+    container_name: letsencrypt
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt-certs:/etc/nginx/certs
+      - letsencrypt-vhost-d:/etc/nginx/vhost.d
+      - letsencrypt-html:/usr/share/nginx/html
+    env_file:
+      - .env.docker-compose
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+      - DEBUG=true
+      # - ACME_CA_URI=https://acme-staging-v02.api.letsencrypt.org/directory # Use Let's Encrypt staging
+
+    networks:
+      - my_media_network
+
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    container_name: duckdns
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - SUBDOMAINS=${SUBDOMAINS}
+      - TOKEN=${DUCKDNS_TOKEN}
+      - UPDATE_IP=ipv4
+      - LOG_FILE=false
+    volumes:
+      - duckdns_config:/config
+
+    restart: unless-stopped
+    env_file:
+      - .env.docker-compose
+
+  frontend-app:
+    container_name: frontend-app
+    build:
+      context: .
+      dockerfile: Dockerfile.stg
+
+    image: devshittu/session-management:actman-app-latest
+    # Set environment variables directly in the docker-compose file
+    environment:
+      # ENV_VARIABLE: ${ENV_VARIABLE}
+      # NEXT_PUBLIC_ENV_VARIABLE: ${NEXT_PUBLIC_ENV_VARIABLE}
+      - NODE_ENV=development
+      - VIRTUAL_HOST=${VIRTUAL_HOST}
+      - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+
+    # Set envrionment variables based on the .env file
+    env_file:
+      - .env.docker-compose
+
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - my_media_network
+    # depends_on:
+    #   - web-app
+
+# Define a network, which allows containers to communicate
+# with each other, by using their container name as a hostname
+networks:
+  my_media_network:
+    external: true
+
+volumes:
+  letsencrypt-certs:
+  letsencrypt-vhost-d:
+  letsencrypt-html:
+  static_volume:
+  media_volume:
+  duckdns_config:
+# Path: docker-compose.staging.yml
+# /home/mshittu/dev/frontend/react-apps/session-management/docker-compose.staging.yml

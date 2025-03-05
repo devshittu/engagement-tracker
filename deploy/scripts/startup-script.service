@@ -1,0 +1,12 @@
+[Unit]
+Description=Run startup script
+
+[Service]
+ExecStart=/usr/local/bin/startup-script.sh
+Type=oneshot
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+
+# terraform/scripts/startup-script.service

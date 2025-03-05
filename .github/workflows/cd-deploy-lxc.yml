@@ -1,0 +1,115 @@
+name: CD Pipeline for Docker Compose
+
+on:
+  workflow_run:
+    workflows: ['CI Pipeline']
+    branches:
+      - main
+    types:
+      - completed
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DOCKER_INTERNAL_NETWORK_NAME: 'my_media_network'
+  REPOSITORY_NAME: session-management
+
+jobs:
+  deploy:
+    # TODO: remove next line to activate the job and uncomment the next line after that.
+    if: false
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: self-hosted
+    environment: staging
+
+    steps:
+      - name: Fix permissions before checkout
+        run: sudo chown -R $USER:$USER /home/mediavmuser/action-runners/session-management/_work/
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }} # Dynamically checkout the branch that triggered the workflow
+
+      - name: Set up environment variables
+        run: |
+          echo "APP_NAME=${{ vars.APP_NAME }}" >> .env.docker-compose
+          echo "APP_CODE_NAME=${{ vars.APP_CODE_NAME }}" >> .env.docker-compose
+          echo "APP_VERSION=${{ vars.APP_VERSION }}" >> .env.docker-compose
+          echo "APP_DESCRIPTION=${{ vars.APP_DESCRIPTION }}" >> .env.docker-compose
+          echo "SUBDOMAINS=${{ secrets.SUBDOMAINS }}" >> .env.docker-compose
+          echo "DUCKDNS_TOKEN=${{ secrets.DUCKDNS_TOKEN }}" >> .env.docker-compose
+          echo "VIRTUAL_HOST=${{ secrets.VIRTUAL_HOST }}" >> .env.docker-compose
+          echo "LETSENCRYPT_HOST=${{ secrets.LETSENCRYPT_HOST }}" >> .env.docker-compose
+          echo "LETSENCRYPT_EMAIL=${{ secrets.LETSENCRYPT_EMAIL }}" >> .env.docker-compose
+          echo "DEFAULT_EMAIL=${{ secrets.DEFAULT_EMAIL }}" >> .env.docker-compose
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env.docker-compose
+
+      - name: Print .env.docker-compose for debugging
+        run: cat .env.docker-compose
+
+      - name: Copy .env.docker-compose to .env
+        run: cp .env.docker-compose .env
+
+      - name: Print .env for debugging
+        run: cat .env
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+      - name: Create Docker network if not exists
+        run: |
+          if ! sudo docker network ls | grep -q ${{ env.DOCKER_INTERNAL_NETWORK_NAME }}; then
+            sudo docker network create ${{ env.DOCKER_INTERNAL_NETWORK_NAME }};
+          fi
+      - name: Pull Docker image
+        run: |
+          sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/session-management:actman-app-latest
+
+      # Deploy DuckDNS service using Docker Compose
+      - name: Deploy DuckDNS
+        run: |
+          docker compose  --env-file .env.docker-compose -f docker-compose.staging.yml up -d
+        env:
+          SUBDOMAINS: ${{ secrets.SUBDOMAINS }}
+          DUCKDNS_TOKEN: ${{ secrets.DUCKDNS_TOKEN }}
+
+      # Verify that the service is running
+      - name: Verify DuckDNS Service
+        run: |
+          docker ps | grep duckdns
+
+      # - name: Delete Old docker container for web app
+      #   run: sudo docker compose -f docker-compose.staging.yml down web-app || true
+
+      # - name: Run Docker Container for web app
+      #   run: sudo docker compose --env-file .env.docker-compose -f docker-compose.staging.yml up -d web-app db-postgres db-neo4j
+
+      - name: Check for 'hard-reset' in commit message
+        id: check_commit
+        run: |
+          echo "Checking for 'hard-reset' keyword in commit message..."
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+          if [[ "$COMMIT_MESSAGE" == *"hard-reset"* ]]; then
+            echo "hard-reset=true" >> $GITHUB_ENV
+          else
+            echo "hard-reset=false" >> $GITHUB_ENV
+          fi
+
+      - name: Conditional container restart
+        run: |
+          if [[ "${{ env.hard-reset }}" == "true" ]]; then
+            echo "Performing a hard reset..."
+            sudo docker compose -f docker-compose.staging.yml down || true
+            sudo docker compose --env-file .env.docker-compose -f docker-compose.staging.yml up -d
+          else
+            echo "Restarting only frontend-app "
+            sudo docker compose -f docker-compose.staging.yml down frontend-app  || true
+            sudo docker compose --env-file .env.docker-compose -f docker-compose.staging.yml up -d --no-recreate frontend-app  
+          fi
+
+      # - name: Run init-web-app.sh in backend-app container
+      #   run: sudo docker exec backend-app bash -c "./k8s/scripts/init-web-app.sh"
+
+# .github/workflows/cd-deploy-lxc.yml

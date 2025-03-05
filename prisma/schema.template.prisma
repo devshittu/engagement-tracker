@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "$PROVIDER$"
+  url       = "$DATABASE_URL$"
+  directUrl = "$DIRECT_URL$"
+}
+
+model ServiceUser {
+  id          Int          @id @default(autoincrement())
+  nhsNumber   String       @unique
+  name        String
+  admissions  Admission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime?    @updatedAt
+}
+
+model Admission {
+  id            Int          @id @default(autoincrement())
+  serviceUser   ServiceUser  @relation(fields: [serviceUserId], references: [id])
+  serviceUserId Int
+  ward          Ward         @relation(fields: [wardId], references: [id])
+  wardId        Int
+  admissionDate DateTime
+  dischargeDate DateTime?
+  sessions      Session[]
+}
+
+model Ward {
+  id          Int          @id @default(autoincrement())
+  name        String
+  admissions  Admission[]
+}
+
+model Activity {
+  id         Int        @id @default(autoincrement())
+  name       String
+  sessions   Session[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime?  @updatedAt
+}
+
+model Session {
+  id           Int         @id @default(autoincrement())
+  admission    Admission   @relation(fields: [admissionId], references: [id])
+  admissionId  Int
+  activity     Activity    @relation(fields: [activityId], references: [id])
+  activityId   Int
+  timeIn       DateTime   @default(now())
+  timeOut      DateTime?
+}
+
+// prisma/schema.template.prisma
