@@ -58,6 +58,7 @@ src/stories
 
 # to collect all pasted data
 .pastebin
+*.pastebin
 # Ignore auto-generated Prisma schema
 prisma/schema.prisma
 # local env files
