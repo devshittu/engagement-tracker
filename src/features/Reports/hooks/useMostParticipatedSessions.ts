@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import { apiClient } from '@/lib/api-client';
 
 export type MostParticipatedResponse = {
   period: { year: number; month: number };
@@ -30,7 +31,7 @@ export const useMostParticipatedSessions = ({
       const params = new URLSearchParams();
       if (year) params.set('year', year.toString());
       if (month) params.set('month', month.toString());
-      const { data } = await axios.get<MostParticipatedResponse>(
+      const { data } = await apiClient.get<MostParticipatedResponse>(
         `/api/reports/sessions/most-participated?${params.toString()}`,
       );
       return data;
