@@ -1,62 +1,102 @@
-import { NextResponse } from 'next/server';
+// src/app/api/reports/sessions/metrics/dashboard/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, subWeeks } from 'date-fns';
+import { log } from '@/lib/reportUtils';
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
+  const userJson = req.headers.get('x-supabase-user');
+  if (!userJson) {
+    log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    // Define the current week's boundaries (assuming week starts on Monday)
     const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
+    const currentWeekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const previousWeekStart = startOfWeek(subWeeks(now, 1), {
+      weekStartsOn: 1,
+    });
+    const previousWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
 
-    // Calculate sample metrics from your database:
-    // 1. Sessions this week
-    // 2. New Service Users this week
-    // 3. Admissions this week
+    log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Fetching dashboard metrics');
 
-    const [sessionCount, newUsersCount, admissionCount] = await Promise.all([
+    const [
+      currentSessionCount,
+      previousSessionCount,
+      currentNewUsers,
+      previousNewUsers,
+      currentAdmissions,
+      previousAdmissions,
+    ] = await Promise.all([
       prisma.session.count({
-        where: { timeIn: { gte: weekStart, lte: weekEnd } },
+        where: { timeIn: { gte: currentWeekStart, lte: currentWeekEnd } },
+      }),
+      prisma.session.count({
+        where: { timeIn: { gte: previousWeekStart, lte: previousWeekEnd } },
       }),
       prisma.serviceUser.count({
-        where: { createdAt: { gte: weekStart, lte: weekEnd } },
+        where: { createdAt: { gte: currentWeekStart, lte: currentWeekEnd } },
+      }),
+      prisma.serviceUser.count({
+        where: { createdAt: { gte: previousWeekStart, lte: previousWeekEnd } },
       }),
       prisma.admission.count({
-        where: { admissionDate: { gte: weekStart, lte: weekEnd } },
+        where: {
+          admissionDate: { gte: currentWeekStart, lte: currentWeekEnd },
+        },
+      }),
+      prisma.admission.count({
+        where: {
+          admissionDate: { gte: previousWeekStart, lte: previousWeekEnd },
+        },
       }),
     ]);
 
-    // For demonstration, we'll add dummy percentage change calculations.
-    // In a real scenario, calculate these based on previous periods.
     const metrics = [
       {
         title: 'Sessions This Week',
-        value: sessionCount,
-        change: sessionCount ? ((sessionCount - 50) / 50) * 100 : 0, // dummy calculation
-        positive: sessionCount >= 50,
+        value: currentSessionCount,
+        change:
+          previousSessionCount > 0
+            ? ((currentSessionCount - previousSessionCount) /
+                previousSessionCount) *
+              100
+            : 0,
+        positive: currentSessionCount >= previousSessionCount,
       },
       {
         title: 'New Service Users This Week',
-        value: newUsersCount,
-        change: newUsersCount ? ((newUsersCount - 20) / 20) * 100 : 0, // dummy calculation
-        positive: newUsersCount >= 20,
+        value: currentNewUsers,
+        change:
+          previousNewUsers > 0
+            ? ((currentNewUsers - previousNewUsers) / previousNewUsers) * 100
+            : 0,
+        positive: currentNewUsers >= previousNewUsers,
       },
       {
         title: 'Admissions This Week',
-        value: admissionCount,
-        change: admissionCount ? ((admissionCount - 10) / 10) * 100 : 0, // dummy calculation
-        positive: admissionCount >= 10,
+        value: currentAdmissions,
+        change:
+          previousAdmissions > 0
+            ? ((currentAdmissions - previousAdmissions) / previousAdmissions) *
+              100
+            : 0,
+        positive: currentAdmissions >= previousAdmissions,
       },
     ];
 
+    log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Dashboard metrics fetched', {
+      metrics,
+    });
     return NextResponse.json(metrics);
   } catch (error) {
-    console.error('Failed to fetch dashboard metrics:', error);
+    log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Failed to fetch metrics', error);
     return NextResponse.json(
       { error: 'Failed to fetch metrics' },
       { status: 500 },
     );
   }
 }
-
 // src/app/api/reports/sessions/metrics/dashboard/route.ts
