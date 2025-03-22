@@ -8,6 +8,7 @@ import {
   MdGroup,
   MdBarChart,
   MdAdd,
+  MdOutlineHome,
 } from 'react-icons/md';
 import BottomNav, {
   BottomNavCenterButton,
@@ -17,6 +18,12 @@ import FullBottomNav from '../Navigation/FullBottomNavigation';
 
 const AppNav: React.FC = () => {
   const items: BottomNavItem[] = [
+    {
+      label: 'Dashboard',
+      href: '/dashboard',
+      icon: MdOutlineHome,
+      tooltip: 'Dashboard',
+    },
     {
       label: 'Activities',
       href: '/activities',
