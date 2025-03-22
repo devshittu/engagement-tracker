@@ -1,60 +1,107 @@
-import { NextResponse } from 'next/server';
+// src/app/api/activities/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { CreateActivityInput } from '@/features/activities/types';
 
+export async function GET(request: NextRequest) {
+  try {
+    const userHeader = request.headers.get('x-supabase-user');
+    if (!userHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-export async function GET() {
-  const activities = await prisma.activity.findMany();
-  return NextResponse.json(activities);
-}
+    const user = JSON.parse(userHeader);
+    const userRoleLevel = user.roles?.level ?? 0;
+    const userDepartmentId = user.departmentId;
 
-export async function POST(request: Request) {
-  const { name } = await request.json();
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') ?? '1');
+    const pageSize = parseInt(searchParams.get('pageSize') ?? '20');
+    const departmentId = searchParams.get('departmentId')
+      ? parseInt(searchParams.get('departmentId')!)
+      : undefined;
 
-  if (!name) {
-    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-  }
+    const skip = (page - 1) * pageSize;
 
-  const activity = await prisma.activity.create({
-    data: { name },
-  });
+    let where: any = {};
 
-  return NextResponse.json(activity, { status: 201 });
-}
+    if (userRoleLevel < 3 && userDepartmentId) {
+      where = {
+        OR: [{ departmentId: userDepartmentId }, { departmentId: null }],
+      };
+    } else if (departmentId) {
+      where = {
+        OR: [{ departmentId }, { departmentId: null }],
+      };
+    }
 
+    const [activities, total] = await Promise.all([
+      prisma.activity.findMany({
+        where,
+        include: { department: true },
+        skip,
+        take: pageSize,
+        orderBy: { name: 'asc' },
+      }),
+      prisma.activity.count({ where }),
+    ]);
 
-export async function PUT(request: Request) {
-  const body = await request.json();
-  const { id, name } = body;
-
-  if (!id || !name) {
+    return NextResponse.json({ activities, total }, { status: 200 });
+  } catch (error: unknown) {
+    console.error('Error fetching activities:', error);
     return NextResponse.json(
-      { error: 'Activity ID and name are required.' },
-      { status: 400 },
+      { error: 'Internal Server Error' },
+      { status: 500 },
     );
   }
-
-  const updatedActivity = await prisma.activity.update({
-    where: { id },
-    data: { name },
-  });
-
-  return NextResponse.json(updatedActivity);
 }
 
-export async function DELETE(request: Request) {
-  const body = await request.json();
-  const { id } = body;
+export async function POST(request: NextRequest) {
+  try {
+    const userHeader = request.headers.get('x-supabase-user');
+    if (!userHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  if (!id) {
+    const user = JSON.parse(userHeader);
+    const userRoleLevel = user.roles?.level ?? 0;
+    const userDepartmentId = user.departmentId;
+
+    const body: CreateActivityInput = await request.json();
+    if (!body.name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    let departmentId = body.departmentId;
+    if (userRoleLevel <= 3) {
+      // Restrict departmentId to user's department or null
+      if (departmentId && departmentId !== userDepartmentId) {
+        return NextResponse.json(
+          { error: 'Unauthorized to create activity for this department' },
+          { status: 403 },
+        );
+      }
+    }
+
+    const activity = await prisma.activity.create({
+      data: {
+        name: body.name,
+        description: body.description ?? null,
+        departmentId: departmentId ?? null,
+        createdAt: new Date(),
+      },
+      include: { department: true },
+    });
+
+    return NextResponse.json(activity, { status: 201 });
+  } catch (error: unknown) {
+    console.error('Error creating activity:', error);
     return NextResponse.json(
-      { error: 'Activity ID is required.' },
-      { status: 400 },
+      { error: 'Internal Server Error' },
+      { status: 500 },
     );
   }
-
-  await prisma.activity.delete({ where: { id } });
-
-  return NextResponse.json({ message: 'Activity deleted successfully.' });
 }
 
 // src/app/api/activities/route.ts
