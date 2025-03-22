@@ -12,13 +12,18 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_SERVICE_ROLE_KEY must be defined for seeding');
 }
 
-const log = (message: string, data?: any) => console.log(`[SEED] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+const log = (message: string, data?: any) =>
+  console.log(`[SEED] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 async function main() {
   log('Starting seed process...');
 
   const now = new Date();
-  const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+  const fiveYearsAgo = new Date(
+    now.getFullYear() - 5,
+    now.getMonth(),
+    now.getDate(),
+  );
 
   // Clear existing data
   try {
@@ -42,12 +47,16 @@ async function main() {
 
   try {
     log('Clearing Supabase auth users...');
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listError) throw new Error(`Failed to list Supabase users: ${listError.message}`);
+    const { data: users, error: listError } =
+      await supabaseAdmin.auth.admin.listUsers();
+    if (listError)
+      throw new Error(`Failed to list Supabase users: ${listError.message}`);
     if (users?.users.length > 0) {
       for (const user of users.users) {
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
-        if (deleteError) log(`Failed to delete user ${user.email}`, deleteError.message);
+        const { error: deleteError } =
+          await supabaseAdmin.auth.admin.deleteUser(user.id);
+        if (deleteError)
+          log(`Failed to delete user ${user.email}`, deleteError.message);
         else log(`Deleted user: ${user.email}`, { id: user.id });
       }
     }
@@ -61,8 +70,10 @@ async function main() {
   let wardIds: number[];
   try {
     const wardNames = ['Elm', 'Juniper', 'Mulberry', 'Palm', 'Oak', 'Willow']; // Added more wards
-    const wards = await Promise.all(wardNames.map(name => prisma.ward.create({ data: { name } })));
-    wardIds = wards.map(ward => ward.id);
+    const wards = await Promise.all(
+      wardNames.map((name) => prisma.ward.create({ data: { name } })),
+    );
+    wardIds = wards.map((ward) => ward.id);
     log('Wards created', { count: wards.length });
   } catch (error) {
     log('Error creating wards', error);
@@ -81,7 +92,9 @@ async function main() {
       ],
       skipDuplicates: true,
     });
-    deptMap = new Map((await prisma.department.findMany()).map(d => [d.name, d.id]));
+    deptMap = new Map(
+      (await prisma.department.findMany()).map((d) => [d.name, d.id]),
+    );
     log('Departments seeded', { count: deptMap.size });
   } catch (error) {
     log('Error seeding departments', error);
@@ -93,28 +106,98 @@ async function main() {
   try {
     await prisma.role.createMany({
       data: [
-        { name: 'Psychologist', level: 1, departmentId: deptMap.get('Psychology')! },
-        { name: 'Senior Psychologist', level: 2, departmentId: deptMap.get('Psychology')! },
-        { name: 'Site Lead', level: 3, departmentId: deptMap.get('Psychology')! },
-        { name: 'Director', level: 4, departmentId: deptMap.get('Psychology')! },
-        { name: 'Therapist', level: 1, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Senior Therapist', level: 2, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Site Lead', level: 3, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Director', level: 4, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Coordinator', level: 1, departmentId: deptMap.get('Activity Coordinator')! },
-        { name: 'Senior Coordinator', level: 2, departmentId: deptMap.get('Activity Coordinator')! },
-        { name: 'Site Lead', level: 3, departmentId: deptMap.get('Activity Coordinator')! },
-        { name: 'Director', level: 4, departmentId: deptMap.get('Activity Coordinator')! },
+        {
+          name: 'Psychologist',
+          level: 1,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Senior Psychologist',
+          level: 2,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Site Lead',
+          level: 3,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Director',
+          level: 4,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Therapist',
+          level: 1,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Senior Therapist',
+          level: 2,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Site Lead',
+          level: 3,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Director',
+          level: 4,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Coordinator',
+          level: 1,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
+        {
+          name: 'Senior Coordinator',
+          level: 2,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
+        {
+          name: 'Site Lead',
+          level: 3,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
+        {
+          name: 'Director',
+          level: 4,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
         { name: 'Nurse', level: 1, departmentId: deptMap.get('Nursing')! },
-        { name: 'Senior Nurse', level: 2, departmentId: deptMap.get('Nursing')! },
-        { name: 'Clinical Team Lead', level: 3, departmentId: deptMap.get('Nursing')! },
-        { name: 'Ward Manager', level: 4, departmentId: deptMap.get('Nursing')! },
-        { name: 'Clinical Service Manager', level: 5, departmentId: deptMap.get('Nursing')! },
-        { name: 'Super Admin', level: 10, departmentId: deptMap.get('Psychology')! },
+        {
+          name: 'Senior Nurse',
+          level: 2,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Clinical Team Lead',
+          level: 3,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Ward Manager',
+          level: 4,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Clinical Service Manager',
+          level: 5,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Super Admin',
+          level: 10,
+          departmentId: deptMap.get('Psychology')!,
+        },
       ],
       skipDuplicates: true,
     });
-    roleMap = new Map((await prisma.role.findMany()).map(r => [r.name, r.id]));
+    roleMap = new Map(
+      (await prisma.role.findMany()).map((r) => [r.name, r.id]),
+    );
     log('Roles seeded', { count: roleMap.size });
   } catch (error) {
     log('Error seeding roles', error);
@@ -126,36 +209,110 @@ async function main() {
   const level1to4Users: string[] = [];
   try {
     const exampleUsers = [
-      { email: 'superadmin@example.com', role: 'Super Admin', dept: 'Psychology' },
-      { email: 'director.psych1@example.com', role: 'Director', dept: 'Psychology' },
-      { email: 'sitelead.psych1@example.com', role: 'Site Lead', dept: 'Psychology' },
-      { email: 'senior.psych1@example.com', role: 'Senior Psychologist', dept: 'Psychology' },
-      { email: 'psychologist1@example.com', role: 'Psychologist', dept: 'Psychology' },
-      { email: 'psychologist2@example.com', role: 'Psychologist', dept: 'Psychology' },
-      { email: 'director.ot1@example.com', role: 'Director', dept: 'Occupational Therapy' },
-      { email: 'sitelead.ot1@example.com', role: 'Site Lead', dept: 'Occupational Therapy' },
-      { email: 'senior.ot1@example.com', role: 'Senior Therapist', dept: 'Occupational Therapy' },
-      { email: 'therapist1@example.com', role: 'Therapist', dept: 'Occupational Therapy' },
-      { email: 'therapist2@example.com', role: 'Therapist', dept: 'Occupational Therapy' },
-      { email: 'director.ac1@example.com', role: 'Director', dept: 'Activity Coordinator' },
-      { email: 'sitelead.ac1@example.com', role: 'Site Lead', dept: 'Activity Coordinator' },
-      { email: 'senior.ac1@example.com', role: 'Senior Coordinator', dept: 'Activity Coordinator' },
-      { email: 'coordinator1@example.com', role: 'Coordinator', dept: 'Activity Coordinator' },
-      { email: 'coordinator2@example.com', role: 'Coordinator', dept: 'Activity Coordinator' },
-      { email: 'manager.nurse1@example.com', role: 'Ward Manager', dept: 'Nursing' },
-      { email: 'senior.nurse1@example.com', role: 'Senior Nurse', dept: 'Nursing' },
+      {
+        email: 'superadmin@example.com',
+        role: 'Super Admin',
+        dept: 'Psychology',
+      },
+      {
+        email: 'director.psych1@example.com',
+        role: 'Director',
+        dept: 'Psychology',
+      },
+      {
+        email: 'sitelead.psych1@example.com',
+        role: 'Site Lead',
+        dept: 'Psychology',
+      },
+      {
+        email: 'senior.psych1@example.com',
+        role: 'Senior Psychologist',
+        dept: 'Psychology',
+      },
+      {
+        email: 'psychologist1@example.com',
+        role: 'Psychologist',
+        dept: 'Psychology',
+      },
+      {
+        email: 'psychologist2@example.com',
+        role: 'Psychologist',
+        dept: 'Psychology',
+      },
+      {
+        email: 'director.ot1@example.com',
+        role: 'Director',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'sitelead.ot1@example.com',
+        role: 'Site Lead',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'senior.ot1@example.com',
+        role: 'Senior Therapist',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'therapist1@example.com',
+        role: 'Therapist',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'therapist2@example.com',
+        role: 'Therapist',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'director.ac1@example.com',
+        role: 'Director',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'sitelead.ac1@example.com',
+        role: 'Site Lead',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'senior.ac1@example.com',
+        role: 'Senior Coordinator',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'coordinator1@example.com',
+        role: 'Coordinator',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'coordinator2@example.com',
+        role: 'Coordinator',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'manager.nurse1@example.com',
+        role: 'Ward Manager',
+        dept: 'Nursing',
+      },
+      {
+        email: 'senior.nurse1@example.com',
+        role: 'Senior Nurse',
+        dept: 'Nursing',
+      },
       { email: 'nurse1@example.com', role: 'Nurse', dept: 'Nursing' },
       { email: 'nurse2@example.com', role: 'Nurse', dept: 'Nursing' },
     ];
     const password = 'defaultPassword123!';
 
     for (const user of exampleUsers) {
-      const { data: authData, error } = await supabaseAdmin.auth.admin.createUser({
-        email: user.email,
-        password,
-        email_confirm: true,
-      });
-      if (error) throw new Error(`Failed to create ${user.email}: ${error.message}`);
+      const { data: authData, error } =
+        await supabaseAdmin.auth.admin.createUser({
+          email: user.email,
+          password,
+          email_confirm: true,
+        });
+      if (error)
+        throw new Error(`Failed to create ${user.email}: ${error.message}`);
 
       const authId = authData.user.id;
       await prisma.user.create({
@@ -169,7 +326,13 @@ async function main() {
         },
       });
       if (user.role === 'Super Admin') superAdminId = authId;
-      if ([1, 2, 3, 4].includes((await prisma.role.findUnique({ where: { id: roleMap.get(user.role)! } }))!.level)) {
+      if (
+        [1, 2, 3, 4].includes(
+          (await prisma.role.findUnique({
+            where: { id: roleMap.get(user.role)! },
+          }))!.level,
+        )
+      ) {
         level1to4Users.push(authId);
       }
     }
@@ -184,17 +347,61 @@ async function main() {
   let continuityLogs: any[];
   try {
     const activityData = [
-      { name: 'Chat Cafe', description: 'A relaxed social gathering over tea', departmentId: null },
-      { name: 'My Coping Toolbox', description: 'Workshop on mental health strategies', departmentId: deptMap.get('Psychology') },
-      { name: 'Mindfulness', description: 'Guided meditation sessions', departmentId: null },
-      { name: 'Art Therapy', description: 'Creative expression for healing', departmentId: deptMap.get('Occupational Therapy') },
-      { name: 'Road to Recovery', description: 'Support group for rehabilitation', departmentId: deptMap.get('Psychology') },
-      { name: 'Comfort in the Community', description: 'Community integration activities', departmentId: null },
-      { name: 'Social Hub', description: 'Interactive social space', departmentId: null },
-      { name: 'Cyber Cafe', description: 'Digital skills and leisure', departmentId: deptMap.get('Activity Coordinator') },
-      { name: 'Gym', description: 'Physical fitness sessions', departmentId: null },
-      { name: 'Community Visit', description: 'Outings to local areas', departmentId: null },
-      { name: '1:1', description: 'Personalized support sessions', departmentId: deptMap.get('Nursing') },
+      {
+        name: 'Chat Cafe',
+        description: 'A relaxed social gathering over tea',
+        departmentId: null,
+      },
+      {
+        name: 'My Coping Toolbox',
+        description: 'Workshop on mental health strategies',
+        departmentId: deptMap.get('Psychology'),
+      },
+      {
+        name: 'Mindfulness',
+        description: 'Guided meditation sessions',
+        departmentId: null,
+      },
+      {
+        name: 'Art Therapy',
+        description: 'Creative expression for healing',
+        departmentId: deptMap.get('Occupational Therapy'),
+      },
+      {
+        name: 'Road to Recovery',
+        description: 'Support group for rehabilitation',
+        departmentId: deptMap.get('Psychology'),
+      },
+      {
+        name: 'Comfort in the Community',
+        description: 'Community integration activities',
+        departmentId: null,
+      },
+      {
+        name: 'Social Hub',
+        description: 'Interactive social space',
+        departmentId: null,
+      },
+      {
+        name: 'Cyber Cafe',
+        description: 'Digital skills and leisure',
+        departmentId: deptMap.get('Activity Coordinator'),
+      },
+      {
+        name: 'Gym',
+        description: 'Physical fitness sessions',
+        departmentId: null,
+      },
+      {
+        name: 'Community Visit',
+        description: 'Outings to local areas',
+        departmentId: null,
+      },
+      {
+        name: '1:1',
+        description: 'Personalized support sessions',
+        departmentId: deptMap.get('Nursing'),
+      },
     ];
 
     for (const activity of activityData) {
@@ -205,24 +412,44 @@ async function main() {
       for (let i = 0; i < numCycles; i++) {
         const startDate = new Date(currentDate);
         const duration = faker.number.int({ min: 60, max: 300 });
-        const isActive = i === numCycles - 1 && faker.datatype.boolean({ probability: 0.6 });
-        const discontinueDate = isActive ? null : new Date(startDate.getTime() + faker.number.int({ min: 30, max: 365 }) * 24 * 60 * 60 * 1000);
+        const isActive =
+          i === numCycles - 1 && faker.datatype.boolean({ probability: 0.6 });
+        const discontinueDate = isActive
+          ? null
+          : new Date(
+              startDate.getTime() +
+                faker.number.int({ min: 30, max: 365 }) * 24 * 60 * 60 * 1000,
+            );
 
         await prisma.activityContinuityLog.create({
           data: {
             activityId: createdActivity.id,
             startDate,
             discontinuedDate: discontinueDate,
-            reason: discontinueDate ? faker.helpers.arrayElement(['Low attendance', 'Scheduling conflict', 'Staff shortage']) : undefined,
+            reason: discontinueDate
+              ? faker.helpers.arrayElement([
+                  'Low attendance',
+                  'Scheduling conflict',
+                  'Staff shortage',
+                ])
+              : undefined,
             duration,
             createdById: faker.helpers.arrayElement(level1to4Users),
           },
         });
-        currentDate = discontinueDate ? new Date(discontinueDate.getTime() + faker.number.int({ min: 7, max: 90 }) * 24 * 60 * 60 * 1000) : now;
+        currentDate = discontinueDate
+          ? new Date(
+              discontinueDate.getTime() +
+                faker.number.int({ min: 7, max: 90 }) * 24 * 60 * 60 * 1000,
+            )
+          : now;
       }
     }
     continuityLogs = await prisma.activityContinuityLog.findMany();
-    log('Activities and continuity logs created', { count: activityData.length, logs: continuityLogs.length });
+    log('Activities and continuity logs created', {
+      count: activityData.length,
+      logs: continuityLogs.length,
+    });
   } catch (error) {
     log('Error creating activities and continuity logs', error);
     throw new Error('Failed to create activities and continuity logs');
@@ -231,12 +458,18 @@ async function main() {
   // Service Users and Admissions
   let admissions: any[];
   try {
-    const nhsNumbers = Array.from({ length: 100 }, () => faker.number.int({ min: 1000000000, max: 9999999999 }).toString()); // Increased to 100
+    const nhsNumbers = Array.from({ length: 100 }, () =>
+      faker.number.int({ min: 1000000000, max: 9999999999 }).toString(),
+    ); // Increased to 100
     admissions = [];
 
     for (const nhsNumber of nhsNumbers) {
       const serviceUser = await prisma.serviceUser.create({
-        data: { nhsNumber, name: `${faker.person.firstName()} ${faker.person.lastName()}`, createdById: superAdminId! },
+        data: {
+          nhsNumber,
+          name: `${faker.person.firstName()} ${faker.person.lastName()}`,
+          createdById: superAdminId!,
+        },
       });
 
       const admissionCount = faker.helpers.weightedArrayElement([
@@ -248,18 +481,24 @@ async function main() {
 
       let lastDischargeDate: Date | null = null;
       for (let i = 0; i < admissionCount; i++) {
-        const isActive = i === admissionCount - 1 && faker.datatype.boolean({ probability: 0.3 });
+        const isActive =
+          i === admissionCount - 1 &&
+          faker.datatype.boolean({ probability: 0.3 });
         const admissionDate: Date = lastDischargeDate
           ? faker.date.between({ from: lastDischargeDate, to: now })
           : faker.date.between({ from: fiveYearsAgo, to: now });
-        const dischargeDate: Date | null = isActive ? null : faker.date.between({ from: admissionDate, to: now });
+        const dischargeDate: Date | null = isActive
+          ? null
+          : faker.date.between({ from: admissionDate, to: now });
 
         const admission = await prisma.admission.create({
           data: {
             serviceUserId: serviceUser.id,
             wardId: faker.helpers.arrayElement(wardIds),
             admittedById: faker.helpers.arrayElement(level1to4Users),
-            dischargedById: dischargeDate ? faker.helpers.arrayElement(level1to4Users) : null,
+            dischargedById: dischargeDate
+              ? faker.helpers.arrayElement(level1to4Users)
+              : null,
             admissionDate,
             dischargeDate,
           },
@@ -268,7 +507,10 @@ async function main() {
         lastDischargeDate = dischargeDate;
       }
     }
-    log('Service users and admissions created', { users: nhsNumbers.length, admissions: admissions.length });
+    log('Service users and admissions created', {
+      users: nhsNumbers.length,
+      admissions: admissions.length,
+    });
   } catch (error) {
     log('Error creating service users and admissions', error);
     throw new Error('Failed to create service users and admissions');
@@ -276,16 +518,33 @@ async function main() {
 
   // Sessions with Group Clustering and Declined Sessions
   try {
-    const groupSessions: { groupRef: string; facilitators: string[]; admissions: number[] }[] = [];
+    const groupSessions: {
+      groupRef: string;
+      facilitators: string[];
+      admissions: number[];
+    }[] = [];
     const totalGroupSessions = faker.number.int({ min: 10, max: 20 }); // Increased groups
 
     for (let i = 0; i < totalGroupSessions; i++) {
       const groupRef = `GROUP-${faker.string.uuid()}`;
-      const facilitators = faker.helpers.arrayElements(level1to4Users, faker.datatype.boolean() ? 1 : 2);
-      const participantCount = facilitators.length === 2 ? faker.number.int({ min: 6, max: 12 }) : faker.number.int({ min: 3, max: 6 });
-      const participantAdmissions = faker.helpers.arrayElements(admissions, participantCount);
+      const facilitators = faker.helpers.arrayElements(
+        level1to4Users,
+        faker.datatype.boolean() ? 1 : 2,
+      );
+      const participantCount =
+        facilitators.length === 2
+          ? faker.number.int({ min: 6, max: 12 })
+          : faker.number.int({ min: 3, max: 6 });
+      const participantAdmissions = faker.helpers.arrayElements(
+        admissions,
+        participantCount,
+      );
 
-      groupSessions.push({ groupRef, facilitators, admissions: participantAdmissions.map(a => a.id) });
+      groupSessions.push({
+        groupRef,
+        facilitators,
+        admissions: participantAdmissions.map((a) => a.id),
+      });
     }
 
     for (const admission of admissions) {
@@ -302,15 +561,24 @@ async function main() {
         const timeOut = new Date(timeIn.getTime() + duration);
 
         const validLogs = continuityLogs.filter(
-          log => timeIn >= log.startDate && (!log.discontinuedDate || timeIn <= log.discontinuedDate)
+          (log) =>
+            timeIn >= log.startDate &&
+            (!log.discontinuedDate || timeIn <= log.discontinuedDate),
         );
-        const activityLog = validLogs.length > 0 ? faker.helpers.arrayElement(validLogs) : faker.helpers.arrayElement(continuityLogs);
+        const activityLog =
+          validLogs.length > 0
+            ? faker.helpers.arrayElement(validLogs)
+            : faker.helpers.arrayElement(continuityLogs);
 
         const isGroupSession = faker.datatype.boolean({ probability: 0.4 });
-        let groupSessionData: { groupRef: string; facilitators: string[] } | undefined;
+        let groupSessionData:
+          | { groupRef: string; facilitators: string[] }
+          | undefined;
 
         if (isGroupSession) {
-          groupSessionData = groupSessions.find(g => g.admissions.includes(admission.id)) || faker.helpers.arrayElement(groupSessions);
+          groupSessionData =
+            groupSessions.find((g) => g.admissions.includes(admission.id)) ||
+            faker.helpers.arrayElement(groupSessions);
         }
 
         const isDeclined = faker.datatype.boolean({ probability: 0.2 }); // 20% chance of being declined
@@ -324,19 +592,32 @@ async function main() {
           data: {
             type: isGroupSession ? SessionType.GROUP : SessionType.ONE_TO_ONE,
             status,
-            facilitatedById: groupSessionData ? faker.helpers.arrayElement(groupSessionData.facilitators) : faker.helpers.arrayElement(level1to4Users),
+            facilitatedById: groupSessionData
+              ? faker.helpers.arrayElement(groupSessionData.facilitators)
+              : faker.helpers.arrayElement(level1to4Users),
             activityLogId: activityLog.id,
             admissionId: admission.id,
             groupRef: groupSessionData?.groupRef,
-            groupDescription: groupSessionData ? `Group session with ${groupSessionData.facilitators.length} facilitators` : undefined,
+            groupDescription: groupSessionData
+              ? `Group session with ${groupSessionData.facilitators.length} facilitators`
+              : undefined,
             timeIn,
             timeOut: status === SessionStatus.COMPLETED ? timeOut : null,
-            cancelReason: isDeclined ? faker.helpers.arrayElement(['Patient declined', 'Staff unavailable', 'Scheduling issue']) : undefined,
+            cancelReason: isDeclined
+              ? faker.helpers.arrayElement([
+                  'Patient declined',
+                  'Staff unavailable',
+                  'Scheduling issue',
+                ])
+              : undefined,
           },
         });
       }
     }
-    log('Sessions created with group clustering and declined sessions', { totalSessions: await prisma.session.count(), groupSessions: totalGroupSessions });
+    log('Sessions created with group clustering and declined sessions', {
+      totalSessions: await prisma.session.count(),
+      groupSessions: totalGroupSessions,
+    });
   } catch (error) {
     log('Error creating sessions', error);
     throw new Error('Failed to create sessions');
@@ -346,7 +627,7 @@ async function main() {
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error('[SEED ERROR]', e);
     process.exit(1);
   })
