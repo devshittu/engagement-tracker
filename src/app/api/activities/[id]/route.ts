@@ -1,62 +1,98 @@
-import { NextResponse } from 'next/server';
+// src/app/api/activities/[id]/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { UpdateActivityInput } from '@/features/activities/types';
 
-type Params = {
-  params: Promise<{ id: string }>;
-};
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const userHeader = request.headers.get('x-supabase-user');
+    if (!userHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-export async function GET(request: Request, { params }: Params) {
-  const { id } = await params;
-  const activityId = parseInt(id);
+    const activity = await prisma.activity.findUnique({
+      where: { id: parseInt(params.id) },
+      include: { department: true },
+    });
 
-  if (isNaN(activityId)) {
-    return NextResponse.json({ error: 'Invalid activity ID' }, { status: 400 });
+    if (!activity) {
+      return NextResponse.json(
+        { error: 'Activity not found' },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(activity, { status: 200 });
+  } catch (error: unknown) {
+    console.error(`Error fetching activity ${params.id}:`, error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
-
-  const activity = await prisma.activity.findUnique({
-    where: { id: activityId },
-  });
-
-  if (!activity) {
-    return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
-  }
-
-  return NextResponse.json(activity);
 }
 
-export async function PUT(request: Request, { params }: Params) {
-  const { id } = await params;
-  const activityId = parseInt(id);
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const userHeader = request.headers.get('x-supabase-user');
+    if (!userHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  if (isNaN(activityId)) {
-    return NextResponse.json({ error: 'Invalid activity ID' }, { status: 400 });
+    const user = JSON.parse(userHeader);
+    const body: UpdateActivityInput = await request.json();
+
+    const activity = await prisma.activity.update({
+      where: { id: parseInt(params.id) },
+      data: {
+        name: body.name,
+        description: body.description,
+        departmentId: body.departmentId ?? null,
+        updatedAt: new Date(),
+      },
+      include: { department: true },
+    });
+
+    return NextResponse.json(activity, { status: 200 });
+  } catch (error: unknown) {
+    console.error(`Error updating activity ${params.id}:`, error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
-
-  const { name } = await request.json();
-
-  if (!name) {
-    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-  }
-
-  const activity = await prisma.activity.update({
-    where: { id: activityId },
-    data: { name },
-  });
-
-  return NextResponse.json(activity);
 }
 
-export async function DELETE(request: Request, { params }: Params) {
-  const { id } = await params;
-  const activityId = parseInt(id);
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    const userHeader = request.headers.get('x-supabase-user');
+    if (!userHeader) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  if (isNaN(activityId)) {
-    return NextResponse.json({ error: 'Invalid activity ID' }, { status: 400 });
+    await prisma.activity.delete({
+      where: { id: parseInt(params.id) },
+    });
+
+    return NextResponse.json(
+      { message: 'Activity deleted successfully' },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error(`Error deleting activity ${params.id}:`, error);
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
-
-  await prisma.activity.delete({
-    where: { id: activityId },
-  });
-
-  return NextResponse.json({ message: 'Activity deleted successfully' });
 }
