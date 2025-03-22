@@ -1,115 +1,166 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import {
-  startOfWeek,
-  endOfWeek,
-  subWeeks,
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-  startOfYear,
-  endOfYear,
-  subYears,
-} from 'date-fns';
+import { SessionType, SessionStatus } from '@prisma/client';
+import { faker } from '@faker-js/faker';
 
-export async function GET(request: Request) {
+const log = (message: string, data?: any) =>
+  console.log(
+    `[API:SESSIONS] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
+
+export async function GET(req: NextRequest) {
+  const userJson = req.headers.get('x-supabase-user');
+  if (!userJson) {
+    log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'week'; // 'week', 'month', or 'year'
-    const groupBy = searchParams.get('groupBy'); // optional, e.g. "admissionId" or "activityId"
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
+    const skip = (page - 1) * pageSize;
+    const status = searchParams.get('status') as SessionStatus | undefined;
 
-    let currentStart: Date,
-      currentEnd: Date,
-      previousStart: Date,
-      previousEnd: Date;
-    const now = new Date();
+    const whereClause = status ? { status } : {};
 
-    if (period === 'week') {
-      currentStart = startOfWeek(now, { weekStartsOn: 1 });
-      currentEnd = endOfWeek(now, { weekStartsOn: 1 });
-      previousStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-      previousEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-    } else if (period === 'month') {
-      currentStart = startOfMonth(now);
-      currentEnd = endOfMonth(now);
-      previousStart = startOfMonth(subMonths(now, 1));
-      previousEnd = endOfMonth(subMonths(now, 1));
-    } else if (period === 'year') {
-      currentStart = startOfYear(now);
-      currentEnd = endOfYear(now);
-      previousStart = startOfYear(subYears(now, 1));
-      previousEnd = endOfYear(subYears(now, 1));
-    } else {
+    log('Fetching sessions', { page, pageSize, status });
+    const [sessions, total] = await Promise.all([
+      prisma.session.findMany({
+        where: whereClause,
+        skip,
+        take: pageSize,
+        orderBy: { timeIn: 'desc' },
+        include: {
+          facilitatedBy: true,
+          activityLog: { include: { activity: true } },
+          admission: { include: { serviceUser: true, ward: true } },
+        },
+      }),
+      prisma.session.count({ where: whereClause }),
+    ]);
+
+    const serialized = sessions.map((session) => ({
+      ...session,
+      timeIn: session.timeIn.toISOString(),
+      timeOut: session.timeOut?.toISOString() || null,
+      createdAt: session.createdAt.toISOString(),
+      updatedAt: session.updatedAt?.toISOString() || null,
+    }));
+
+    log('Sessions fetched successfully', { count: sessions.length });
+    return NextResponse.json({ sessions: serialized, total, page, pageSize });
+  } catch (error) {
+    log('Failed to fetch sessions', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch sessions' },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const userJson = req.headers.get('x-supabase-user');
+  if (!userJson) {
+    log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user = JSON.parse(userJson);
+  const facilitatorId = user.id;
+
+  try {
+    const { type, activityLogId, admissionId } = await req.json();
+    log('Creating session', { type, activityLogId, admissionId });
+
+    // Validate inputs
+    if (
+      !type ||
+      !activityLogId ||
+      !Number.isInteger(activityLogId) ||
+      !admissionId ||
+      !Number.isInteger(admissionId)
+    ) {
+      log('Invalid input');
       return NextResponse.json(
-        { error: 'Invalid period. Use week, month, or year.' },
+        { error: 'Type, activityLogId, and admissionId are required' },
         { status: 400 },
       );
     }
 
-    // If groupBy is provided, use groupBy queries; else, use aggregate.
-    if (groupBy) {
-      const allowedGroupByFields = ['admissionId', 'activityId']; // Extend as needed.
-      if (!allowedGroupByFields.includes(groupBy)) {
-        return NextResponse.json(
-          {
-            error: `Invalid groupBy field. Allowed: ${allowedGroupByFields.join(', ')}`,
-          },
-          { status: 400 },
-        );
-      }
-
-      // Group data for the current period.
-      const currentGroup = await prisma.session.groupBy({
-        by: [groupBy as any],
-        _count: { id: true },
-        where: {
-          timeIn: { gte: currentStart, lte: currentEnd },
-        },
-        orderBy: { [groupBy]: 'asc' },
-      });
-
-      // Group data for the previous period.
-      const previousGroup = await prisma.session.groupBy({
-        by: [groupBy as any],
-        _count: { id: true },
-        where: {
-          timeIn: { gte: previousStart, lte: previousEnd },
-        },
-        orderBy: { [groupBy]: 'asc' },
-      });
-
-      return NextResponse.json({
-        period,
-        groupBy,
-        current: currentGroup,
-        previous: previousGroup,
-      });
-    } else {
-      // When no groupBy is provided, use aggregate queries.
-      const currentAggregate = await prisma.session.aggregate({
-        _count: { id: true },
-        where: { timeIn: { gte: currentStart, lte: currentEnd } },
-      });
-
-      const previousAggregate = await prisma.session.aggregate({
-        _count: { id: true },
-        where: { timeIn: { gte: previousStart, lte: previousEnd } },
-      });
-
-      return NextResponse.json({
-        period,
-        current: currentAggregate,
-        previous: previousAggregate,
-        trend: {
-          countDifference:
-            currentAggregate._count.id - previousAggregate._count.id,
-        },
-      });
+    if (type !== SessionType.ONE_TO_ONE) {
+      log('Session type must be ONE_TO_ONE');
+      return NextResponse.json(
+        { error: 'Session type must be ONE_TO_ONE' },
+        { status: 400 },
+      );
     }
-  } catch (error) {
-    console.error('Failed to generate report:', error);
+
+    // Check if activity log exists (remove discontinuedDate check per requirement)
+    const activityLog = await prisma.activityContinuityLog.findUnique({
+      where: { id: activityLogId },
+      include: { activity: true },
+    });
+    if (!activityLog) {
+      log('Activity log not found', { activityLogId });
+      return NextResponse.json(
+        { error: 'Activity log not found' },
+        { status: 404 },
+      );
+    }
+
+    // Check if admission exists
+    const admission = await prisma.admission.findUnique({
+      where: { id: admissionId },
+    });
+    if (!admission) {
+      log('Admission not found', { admissionId });
+      return NextResponse.json(
+        { error: 'Admission not found' },
+        { status: 404 },
+      );
+    }
+
+    const now = new Date();
+    const session = await prisma.session.create({
+      data: {
+        type: SessionType.ONE_TO_ONE,
+        status: SessionStatus.SCHEDULED,
+        facilitatedById: facilitatorId,
+        activityLogId,
+        admissionId,
+        timeIn: now,
+      },
+      include: {
+        facilitatedBy: true,
+        activityLog: { include: { activity: true } },
+        admission: { include: { serviceUser: true, ward: true } },
+      },
+    });
+
+    log('Session created successfully', { sessionId: session.id });
     return NextResponse.json(
-      { error: 'Failed to generate report' },
+      {
+        ...session,
+        timeIn: session.timeIn.toISOString(),
+        timeOut: session.timeOut?.toISOString() || null,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt?.toISOString() || null,
+      },
+      { status: 201 },
+    );
+  } catch (error: any) {
+    if (error.code === 'P2003') {
+      log('Invalid foreign key', { error });
+      return NextResponse.json(
+        { error: 'Invalid activity log or admission ID' },
+        { status: 404 },
+      );
+    }
+    log('Failed to create session', error);
+    return NextResponse.json(
+      { error: 'Failed to create session' },
       { status: 500 },
     );
   }
