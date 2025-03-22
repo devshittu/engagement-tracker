@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect, FormEvent } from 'react';
 import { toast } from 'react-toastify';
 
-// Data types
 type ServiceUser = {
   id: number;
   name: string;
@@ -20,16 +19,11 @@ type Activity = {
   name: string;
 };
 
-// Props for the form
 type SessionFormProps = {
-  // If provided, we only want to allow picking from the preselected user's admissions
   preselectedUserId?: number;
-  // If the parent already has admissions (active) list, pass it
   admissions?: Admission[];
   activities: Activity[];
-  // Callback after a successful session creation
   onSessionCreated?: () => void;
-  // Callback to close the modal or form
   onClose?: () => void;
 };
 
@@ -42,12 +36,14 @@ const SessionForm: React.FC<SessionFormProps> = ({
 }) => {
   const router = useRouter();
 
-  // Local state for form fields
   const [admissionId, setAdmissionId] = useState<number | ''>('');
   const [activityId, setActivityId] = useState<number | ''>('');
+  const [errors, setErrors] = useState<{
+    admissionId?: string;
+    activityId?: string;
+  }>({});
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Filter admissions based on preselected user if provided
   const [filteredAdmissions, setFilteredAdmissions] = useState<Admission[]>([]);
 
   useEffect(() => {
@@ -56,7 +52,6 @@ const SessionForm: React.FC<SessionFormProps> = ({
         (adm) => adm.serviceUser.id === preselectedUserId,
       );
       setFilteredAdmissions(userAdmissions);
-      // Auto-select if exactly one admission exists
       if (userAdmissions.length === 1) {
         setAdmissionId(userAdmissions[0].id);
       }
@@ -67,42 +62,53 @@ const SessionForm: React.FC<SessionFormProps> = ({
     }
   }, [admissions, preselectedUserId]);
 
+  const validateForm = () => {
+    const newErrors: { admissionId?: string; activityId?: string } = {};
+    if (admissionId === '')
+      newErrors.admissionId = 'Please select a service user.';
+    if (activityId === '') newErrors.activityId = 'Please select an activity.';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const startSession = async (e: FormEvent) => {
     e.preventDefault();
-    if (admissionId === '' || activityId === '') {
-      toast.error(
-        'Please select both a service user (admission) and an activity.',
-      );
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
-    const response = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ admissionId, activityId }),
-    });
-    setLoading(false);
+    try {
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'ONE_TO_ONE',
+          admissionId,
+          activityLogId: activityId,
+        }),
+      });
 
-    if (response.ok) {
-      toast.success('Session started successfully!');
-      onSessionCreated?.();
-      onClose?.();
-      // Optionally redirect:
-      // router.push('/sessions');
-    } else {
-      toast.error('Failed to start session.');
+      if (response.ok) {
+        toast.success('Session started successfully!');
+        onSessionCreated?.();
+        onClose?.();
+        router.refresh();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to start session.');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="w-full max-w-md">
-      {/* <h2 className="text-lg font-semibold mb-4">Start a New Session</h2> */}
-      <form onSubmit={startSession} className="space-y-4">
-        {/* Service User (Admission) Select */}
+      <form onSubmit={startSession} className="space-y-6">
         <div className="form-control">
           <label className="label" htmlFor="admissionId">
-            <span className="label-text font-medium">
+            <span className="label-text font-medium text-gray-900 dark:text-gray-100">
               Select Service User (Admission)
             </span>
           </label>
@@ -110,10 +116,11 @@ const SessionForm: React.FC<SessionFormProps> = ({
             name="admissionId"
             id="admissionId"
             value={admissionId}
-            onChange={(e) => setAdmissionId(Number(e.target.value))}
-            required
-            className="select select-bordered w-full"
-            // Optionally disable if only one option is available
+            onChange={(e) => {
+              setAdmissionId(Number(e.target.value));
+              setErrors((prev) => ({ ...prev, admissionId: undefined }));
+            }}
+            className={`select select-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${errors.admissionId ? 'border-red-500' : ''}`}
             disabled={
               filteredAdmissions.length === 1 && preselectedUserId !== undefined
             }
@@ -125,20 +132,26 @@ const SessionForm: React.FC<SessionFormProps> = ({
               </option>
             ))}
           </select>
+          {errors.admissionId && (
+            <p className="text-red-500 text-sm mt-1">{errors.admissionId}</p>
+          )}
         </div>
 
-        {/* Activity Select */}
         <div className="form-control">
           <label className="label" htmlFor="activityId">
-            <span className="label-text font-medium">Select Activity</span>
+            <span className="label-text font-medium text-gray-900 dark:text-gray-100">
+              Select Activity
+            </span>
           </label>
           <select
             name="activityId"
             id="activityId"
             value={activityId}
-            onChange={(e) => setActivityId(Number(e.target.value))}
-            required
-            className="select select-bordered w-full"
+            onChange={(e) => {
+              setActivityId(Number(e.target.value));
+              setErrors((prev) => ({ ...prev, activityId: undefined }));
+            }}
+            className={`select select-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${errors.activityId ? 'border-red-500' : ''}`}
           >
             <option value="">Choose an Activity</option>
             {activities.map((activity) => (
@@ -147,13 +160,16 @@ const SessionForm: React.FC<SessionFormProps> = ({
               </option>
             ))}
           </select>
+          {errors.activityId && (
+            <p className="text-red-500 text-sm mt-1">{errors.activityId}</p>
+          )}
         </div>
 
-        {/* Submit Button */}
         <div className="form-control mt-4">
           <button
             type="submit"
-            className={`btn btn-primary w-full ${loading ? 'btn-disabled' : ''}`}
+            className={`btn w-full bg-teal-500 hover:bg-teal-600 text-white ${loading ? 'btn-disabled' : ''}`}
+            disabled={loading}
           >
             {loading ? (
               <span className="loading loading-spinner"></span>
@@ -168,5 +184,4 @@ const SessionForm: React.FC<SessionFormProps> = ({
 };
 
 export default SessionForm;
-
 // src/app/sessions/new/SessionForm.tsx
