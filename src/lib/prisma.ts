@@ -1,4 +1,3 @@
-// lib/prisma.ts
 import { PrismaClient } from '@prisma/client';
 
 declare global {
@@ -16,3 +15,4 @@ export const prisma =
   });
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+// src/lib/prisma.ts
