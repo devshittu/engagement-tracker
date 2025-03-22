@@ -1,34 +1,92 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { Session } from '@/types/serviceUser';
+import { Session, SessionsResponse } from '@/types/serviceUser';
 
-export type ActiveSessionsResponse = {
+type FetchParams = {
+  sortBy: string;
+  order: 'asc' | 'desc';
+  type?: 'ONE_TO_ONE' | 'GROUP';
+  groupByGroupRef?: boolean;
+};
+
+type GroupSession = {
+  groupRef: string;
+  groupDescription: string;
+  count: number;
   sessions: Session[];
-  total?: number; // Optional total count, if needed
 };
 
-export type UseActiveSessionsParams = {
-  sortBy?: string;
-  order?: 'asc' | 'desc';
+type GroupedSessionsResponse = {
+  groups: GroupSession[];
+  total: number;
 };
 
-// Provide default values for parameters
+type ActiveSessionsResponse = SessionsResponse | GroupedSessionsResponse;
+
+const fetchActiveSessions = async ({
+  sortBy,
+  order,
+  type,
+  groupByGroupRef,
+}: FetchParams): Promise<ActiveSessionsResponse> => {
+  const params = new URLSearchParams();
+  params.set('sortBy', sortBy);
+  params.set('order', order);
+  if (type) params.set('type', type);
+  if (groupByGroupRef) params.set('groupByGroupRef', 'true');
+
+  const response = await axios.get<ActiveSessionsResponse>(
+    `/api/sessions/active?${params.toString()}`,
+  );
+  return response.data;
+};
+
 export const useActiveSessions = ({
-  sortBy = 'timeIn',
-  order = 'asc',
-}: UseActiveSessionsParams = {}) => {
-  return useQuery<ActiveSessionsResponse, Error>({
-    queryKey: ['activeSessions', { sortBy, order }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set('sortBy', sortBy);
-      params.set('order', order);
-      const { data } = await axios.get<ActiveSessionsResponse>(
-        `/api/sessions/active?${params.toString()}`,
-      );
-      return data;
-    },
-    refetchInterval: 10000, // Refetch every 10 seconds
+  sortBy,
+  order,
+  type,
+  groupByGroupRef,
+}: FetchParams) =>
+  useQuery<ActiveSessionsResponse, Error>({
+    queryKey: ['activeSessions', { sortBy, order, type, groupByGroupRef }],
+    queryFn: () =>
+      fetchActiveSessions({ sortBy, order, type, groupByGroupRef }),
+    staleTime: 1000 * 60, // 1 minute
   });
+
+// New hook to fetch counts separately
+export const useActiveSessionsCounts = () => {
+  const oneToOne = useQuery<SessionsResponse, Error>({
+    queryKey: ['activeSessionsCount', 'ONE_TO_ONE'],
+    queryFn: () =>
+      fetchActiveSessions({
+        sortBy: 'timeIn',
+        order: 'asc',
+        type: 'ONE_TO_ONE',
+      }),
+    staleTime: 1000 * 60,
+  });
+
+  const group = useQuery<GroupedSessionsResponse, Error>({
+    queryKey: ['activeSessionsCount', 'GROUP'],
+    queryFn: () =>
+      fetchActiveSessions({
+        sortBy: 'timeIn',
+        order: 'asc',
+        type: 'GROUP',
+        groupByGroupRef: true,
+      }),
+    staleTime: 1000 * 60,
+  });
+
+  return {
+    oneToOneCount: oneToOne.data?.total ?? 0,
+    groupCount: group.data?.total ?? 0,
+    isLoading: oneToOne.isLoading || group.isLoading,
+    isError: oneToOne.isError || group.isError,
+    error: oneToOne.error || group.error,
+  };
 };
+// src/features/Sessions/hooks/useActiveSessions.ts
+
 // src/features/Sessions/hooks/useActiveSessions.ts
