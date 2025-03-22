@@ -1,61 +1,165 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// prisma/schema.template.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "$PROVIDER$"
+  provider  = "$PROVIDER$"
   url       = "$DATABASE_URL$"
   directUrl = "$DIRECT_URL$"
 }
 
+enum SessionType {
+  GROUP
+  ONE_TO_ONE
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model Department {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique
+  roles      Role[]
+  users      User[]
+  activities Activity[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("departments")
+}
+
+model Role {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  level        Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  departmentId Int
+  users        User[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @updatedAt
+
+  @@map("roles")
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  name              String?   // Added: Optional name field
+  department        Department @relation(fields: [departmentId], references: [id])
+  departmentId      Int
+  role              Role      @relation(fields: [roleId], references: [id])
+  roleId            Int
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime? @updatedAt
+  createdBy         User?     @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdById       String?   @map("created_by_id")
+  createdUsers      User[]    @relation("UserCreatedBy")
+  facilitatedSessions Session[] @relation("FacilitatedBy")
+  createdServiceUsers ServiceUser[] @relation("CreatedBy")
+  admissionsAdmitted  Admission[] @relation("AdmittedBy")
+  admissionsDischarged Admission[] @relation("DischargedBy")
+  continuityLogs    ActivityContinuityLog[] @relation("CreatedBy")
+
+  @@map("users")
+}
+
 model ServiceUser {
-  id          Int          @id @default(autoincrement())
-  nhsNumber   String       @unique
+  id          Int       @id @default(autoincrement())
+  nhsNumber   String    @unique
   name        String
   admissions  Admission[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime?    @updatedAt
+  createdBy   User      @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime? @updatedAt
+
+  @@map("service_users")
 }
 
 model Admission {
-  id            Int          @id @default(autoincrement())
-  serviceUser   ServiceUser  @relation(fields: [serviceUserId], references: [id])
+  id            Int       @id @default(autoincrement())
+  serviceUser   ServiceUser @relation(fields: [serviceUserId], references: [id])
   serviceUserId Int
-  ward          Ward         @relation(fields: [wardId], references: [id])
+  ward          Ward      @relation(fields: [wardId], references: [id])
   wardId        Int
+  admittedBy    User      @relation("AdmittedBy", fields: [admittedById], references: [id])
+  admittedById  String
+  dischargedBy  User?     @relation("DischargedBy", fields: [dischargedById], references: [id])
+  dischargedById String?
   admissionDate DateTime
   dischargeDate DateTime?
   sessions      Session[]
+
+  @@map("admissions")
 }
 
 model Ward {
-  id          Int          @id @default(autoincrement())
-  name        String
-  admissions  Admission[]
+  id         Int       @id @default(autoincrement())
+  name       String
+  admissions Admission[]
+
+  @@map("wards")
 }
 
 model Activity {
-  id         Int        @id @default(autoincrement())
-  name       String
-  sessions   Session[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime?  @updatedAt
+  id             Int       @id @default(autoincrement())
+  name           String
+  description    String?
+  departmentId   Int?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  continuityLogs ActivityContinuityLog[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime? @updatedAt
+
+  @@map("activities")
+}
+
+model ActivityContinuityLog {
+  id               Int       @id @default(autoincrement())
+  activityId       Int
+  activity         Activity  @relation(fields: [activityId], references: [id])
+  createdBy        User      @relation("CreatedBy", fields: [createdById], references: [id])
+  createdById      String
+  startDate        DateTime  @default(now())
+  discontinuedDate DateTime?
+  reason           String?
+  duration         Int?
+  sessions         Session[]
+
+  @@map("activity_continuity_logs")
 }
 
 model Session {
-  id           Int         @id @default(autoincrement())
-  admission    Admission   @relation(fields: [admissionId], references: [id])
-  admissionId  Int
-  activity     Activity    @relation(fields: [activityId], references: [id])
-  activityId   Int
-  timeIn       DateTime   @default(now())
-  timeOut      DateTime?
+  id                Int       @id @default(autoincrement())
+  type              SessionType
+  status            SessionStatus @default(SCHEDULED)
+  facilitatedBy     User      @relation("FacilitatedBy", fields: [facilitatedById], references: [id])
+  facilitatedById   String
+  activityLog       ActivityContinuityLog @relation(fields: [activityLogId], references: [id])
+  activityLogId     Int
+  admission         Admission @relation(fields: [admissionId], references: [id])
+  admissionId       Int
+  groupRef          String?
+  groupDescription  String?
+  timeIn            DateTime  @default(now())
+  timeOut           DateTime?
+  cancelReason      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime? @updatedAt
+
+  @@index([groupRef])
+  @@map("sessions")
 }
 
 // prisma/schema.template.prisma
