@@ -3,10 +3,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import ThemeToggle from './ThemeToggle';
-import Image from 'next/image';
 import Logo from '../Illustration/Logo';
 import GradientLogo from '../Illustration/GradientLogo';
+import AuthHeader from '@/features/auth/components/AuthHeader';
 
 const Header: React.FC = () => {
   const [top, setTop] = useState<boolean>(true);
@@ -33,16 +32,13 @@ const Header: React.FC = () => {
                 <Logo className="text-base-content" />
               </div>
             </Link>
-            {/* <div className="w-24 sm:w-32 md:w-40 lg:w-48 h-auto">
-  <GradientLogo />
-</div> */}
           </div>
 
           {/* Site Navigation */}
           <nav className="flex flex-grow">
             <ul className="flex flex-grow justify-end flex-wrap items-center">
               <li>
-                <ThemeToggle />
+                <AuthHeader />
               </li>
             </ul>
           </nav>
