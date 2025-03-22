@@ -1,14 +1,12 @@
-import Axios, { AxiosResponse } from 'axios';
-// import { useRouter } from 'next/navigation';
-
-// Use the correct url depending on if it's server or public
+// src/lib/api-client.ts
+import Axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { supabase } from '@/lib/supabase';
 
 const apiUrl =
   typeof window === 'undefined'
-    ? process.env.NEXT_SERVER_API_URL
-    : process.env.NEXT_PUBLIC_API_URL;
+    ? process.env.NEXT_SERVER_API_URL || 'http://localhost:3000'
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-// Ensure that apiUrl is available
 if (!apiUrl) {
   throw new Error('API URL is not defined');
 }
@@ -18,41 +16,57 @@ export const apiClient = Axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  requiresAuth: false,
-
-  // Add withCredentials here if you want it to be the default for all requests
-  // withCredentials: true,
 });
 
 apiClient.interceptors.request.use(
-  async (config) => {
+  async (config: AxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Failed to get session:', error.message);
+      } else if (session?.access_token) {
+        config.headers = {
+          ...config.headers,
+          Authorization: `Bearer ${session.access_token}`,
+        };
+        console.log('Token added to request:', session.access_token); // Debug log
+      } else {
+        console.warn('No session token available');
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor (if needed)
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response.data,
   async (error) => {
     const originalRequest = error.config;
-    const errorCode = error.response?.data?.error?.code;
-    // const router = useRouter();
+    const status = error.response?.status;
 
-    // Handle specific error code 'token_not_provided'
-    if (errorCode === errorCode.TokenNotProvided) {
-      // If the error is not from the refresh token or logout endpoints
-      console.log('when code is:', errorCode, error.response); // Check for specific token errors and sign out
-
-      // router.push('/auth/signin');
+    if (status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const {
+        data: { session },
+        error: refreshError,
+      } = await supabase.auth.refreshSession();
+      if (refreshError || !session) {
+        console.error('Token refresh failed:', refreshError?.message);
+        if (typeof window !== 'undefined') {
+          const currentPath = window.location.pathname + window.location.search;
+          const encodedRedirect = encodeURIComponent(currentPath);
+          window.location.href = `/login?next=${encodedRedirect}`;
+        }
+        return Promise.reject(error);
+      }
+      originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
+      return apiClient(originalRequest);
     }
-    // Handle response errors here
     return Promise.reject(error);
   },
 );
-
 //Path: src/lib/api-client.ts
