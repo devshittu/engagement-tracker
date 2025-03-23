@@ -1,46 +1,7 @@
-// app/api/admissions/[id]/route.ts
-// import { NextResponse } from 'next/server';
-// import { prisma } from '@/lib/prisma';
-
-// type Params = { params: Promise<{ id: string }> };
-
-// export async function GET(request: Request, { params }: Params) {
-//   const { id } = await params;
-//   const admission = await prisma.admission.findUnique({
-//     where: { id: parseInt(id) },
-//     include: { serviceUser: true, ward: true },
-//   });
-
-//   if (!admission) {
-//     return NextResponse.json({ error: 'Admission not found' }, { status: 404 });
-//   }
-
-//   return NextResponse.json(admission);
-// }
-
-// export async function PUT(request: Request, { params }: Params) {
-//   const { id } = await params;
-//   const { wardId, dischargeDate } = await request.json();
-
-//   const admission = await prisma.admission.update({
-//     where: { id: parseInt(id) },
-//     data: {
-//       wardId,
-//       dischargeDate: dischargeDate ? new Date(dischargeDate) : null,
-//     },
-//   });
-
-//   return NextResponse.json(admission);
-// }
-
-// export async function DELETE(request: Request, { params }: Params) {
-//   const { id } = await params;
-//   await prisma.admission.delete({ where: { id: parseInt(id) } });
-//   return NextResponse.json({ message: 'Admission deleted' });
-// }
 // src/app/api/admissions/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 type Params = { params: { id: string } };
 
@@ -51,9 +12,27 @@ const log = (message: string, data?: any) =>
   );
 
 export async function GET(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -88,6 +67,18 @@ export async function GET(req: NextRequest, { params }: Params) {
       );
     }
 
+    // Role-based access control
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    if (userRoleLevel < 3 && admission.admittedBy.departmentId !== userProfile.departmentId) {
+      log('Forbidden: User does not have permission to view this admission');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     log('Admission fetched successfully', { id: admission.id });
     return NextResponse.json({
       ...admission,
@@ -104,14 +95,31 @@ export async function GET(req: NextRequest, { params }: Params) {
 }
 
 export async function PUT(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const user = JSON.parse(userJson);
-  const creatorId = user.id;
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const creatorId = userProfile.id;
   const { id } = params;
   const admissionId = parseInt(id);
 
@@ -124,13 +132,38 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 
   try {
-    const { wardId, dischargeDate } = await req.json();
+    const body = await req.json();
+    const { wardId, dischargeDate } = body;
     log('Updating admission', { id: admissionId, wardId, dischargeDate });
+
+    const admission = await prisma.admission.findUnique({
+      where: { id: admissionId },
+      include: { admittedBy: true },
+    });
+
+    if (!admission) {
+      log('Admission not found', { id: admissionId });
+      return NextResponse.json(
+        { error: 'Admission not found' },
+        { status: 404 },
+      );
+    }
+
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    if (userRoleLevel < 3 && admission.admittedBy.departmentId !== userProfile.departmentId) {
+      log('Forbidden: User does not have permission to update this admission');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const updateData: any = {};
     if (wardId !== undefined) {
       if (!Number.isInteger(wardId)) {
-        log('Invalid ward ID');
+        log('Invalid ward ID', { wardId: wardId }); // Use the value directly
         return NextResponse.json({ error: 'Invalid ward ID' }, { status: 400 });
       }
       updateData.wardId = wardId;
@@ -140,7 +173,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       updateData.dischargedById = dischargeDate ? creatorId : null;
     }
 
-    const admission = await prisma.admission.update({
+    const updatedAdmission = await prisma.admission.update({
       where: { id: admissionId },
       data: updateData,
       include: {
@@ -151,11 +184,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
       },
     });
 
-    log('Admission updated successfully', { id: admission.id });
+    log('Admission updated successfully', { id: updatedAdmission.id });
     return NextResponse.json({
-      ...admission,
-      admissionDate: admission.admissionDate.toISOString(),
-      dischargeDate: admission.dischargeDate?.toISOString() || null,
+      ...updatedAdmission,
+      admissionDate: updatedAdmission.admissionDate.toISOString(),
+      dischargeDate: updatedAdmission.dischargeDate?.toISOString() || null,
     });
   } catch (error: any) {
     if (error.code === 'P2025') {
@@ -166,7 +199,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
       );
     }
     if (error.code === 'P2003') {
-      log('Invalid ward ID', { wardId });
+      log('Invalid ward ID', { wardId: (await req.json()).wardId });
       return NextResponse.json({ error: 'Ward not found' }, { status: 404 });
     }
     log('Failed to update admission', error);
@@ -178,9 +211,27 @@ export async function PUT(req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -196,6 +247,31 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
 
   try {
+    const admission = await prisma.admission.findUnique({
+      where: { id: admissionId },
+      include: { admittedBy: true },
+    });
+
+    if (!admission) {
+      log('Admission not found', { id: admissionId });
+      return NextResponse.json(
+        { error: 'Admission not found' },
+        { status: 404 },
+      );
+    }
+
+    // Role-based access control
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    if (userRoleLevel < 3 && admission.admittedBy.departmentId !== userProfile.departmentId) {
+      log('Forbidden: User does not have permission to delete this admission');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     log('Deleting admission', { id: admissionId });
     await prisma.admission.delete({
       where: { id: admissionId },
@@ -224,3 +300,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     );
   }
 }
+// app/api/admissions/[id]/route.ts
