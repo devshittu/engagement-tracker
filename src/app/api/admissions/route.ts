@@ -1,43 +1,7 @@
-// app/api/admissions/route.ts
-// import { NextResponse } from 'next/server';
-// import { prisma } from '@/lib/prisma';
-
-// export async function GET() {
-//   const admissions = await prisma.admission.findMany({
-//     include: {
-//       serviceUser: true,
-//       ward: true,
-//     },
-//   });
-//   return NextResponse.json(admissions);
-// }
-
-// export async function POST(request: Request) {
-//   const { serviceUserId, wardId, admissionDate, dischargeDate } =
-//     await request.json();
-
-//   if (!serviceUserId || !wardId || !admissionDate) {
-//     return NextResponse.json(
-//       { error: 'Required fields are missing' },
-//       { status: 400 },
-//     );
-//   }
-
-//   const admission = await prisma.admission.create({
-//     data: {
-//       serviceUserId,
-//       wardId,
-//       admissionDate: new Date(admissionDate),
-//       dischargeDate: dischargeDate ? new Date(dischargeDate) : null,
-//     },
-//   });
-
-//   return NextResponse.json(admission, { status: 201 });
-// }
-
 // src/app/api/admissions/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 const log = (message: string, data?: any) =>
   console.log(
@@ -46,9 +10,27 @@ const log = (message: string, data?: any) =>
   );
 
 export async function GET(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -59,12 +41,26 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * pageSize;
     const status = searchParams.get('status'); // 'active', 'discharged', or undefined
 
-    const whereClause =
+    const baseWhereClause =
       status === 'active'
         ? { dischargeDate: null }
         : status === 'discharged'
           ? { dischargeDate: { not: null } }
           : {};
+
+    // Role-based access control
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    const whereClause: any = { ...baseWhereClause };
+    if (userRoleLevel < 3) {
+      whereClause.admittedBy = {
+        departmentId: userProfile.departmentId,
+      };
+    }
 
     log('Fetching admissions', { page, pageSize, status });
     const [admissions, total] = await Promise.all([
@@ -101,17 +97,36 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const user = JSON.parse(userJson);
-  const creatorId = user.id;
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const creatorId = userProfile.id;
+
+  let body: any; // Define body outside the try block
   try {
-    const { serviceUserId, wardId, admissionDate } = await req.json();
+    body = await req.json();
+    const { serviceUserId, wardId, admissionDate } = body;
     log('Creating admission', { serviceUserId, wardId, admissionDate });
 
     if (
@@ -126,12 +141,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    if (userRoleLevel < 3) {
+      const creator = await prisma.user.findUnique({
+        where: { id: creatorId },
+        select: { departmentId: true },
+      });
+
+      if (!creator) {
+        log('Creator not found', { creatorId });
+        return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
+      }
+
+      if (creator.departmentId !== userProfile.departmentId) {
+        log('Forbidden: User cannot create admissions for other departments');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
     const admission = await prisma.admission.create({
       data: {
         serviceUserId,
         wardId,
         admissionDate: new Date(admissionDate),
-        dischargeDate: null, // New admissions are active by default
+        dischargeDate: null,
         admittedById: creatorId,
       },
       include: { serviceUser: true, ward: true, admittedBy: true },
@@ -148,7 +186,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     if (error.code === 'P2003') {
-      log('Invalid foreign key', { serviceUserId, wardId });
+      log('Invalid foreign key', { serviceUserId: body?.serviceUserId, wardId: body?.wardId });
       return NextResponse.json(
         { error: 'Service user or ward not found' },
         { status: 404 },
@@ -161,3 +199,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+// app/api/admissions/route.ts
