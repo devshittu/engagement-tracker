@@ -24,35 +24,59 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // For protected routes, check the session and redirect if not authenticated
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError || !session) {
-    console.log('Middleware: No session found:', sessionError?.message);
+  // For protected routes, check the Authorization header
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('Middleware: No Authorization header found');
     const redirectUrl = req.nextUrl.pathname + req.nextUrl.search;
     const encodedRedirect = encodeURIComponent(redirectUrl);
     console.log('Middleware: Redirecting to login with next:', redirectUrl);
     const loginUrl = new URL(`/login?next=${encodedRedirect}`, req.url);
     const response = NextResponse.redirect(loginUrl);
-    const redirectTimestamp = parseInt(req.cookies.get('redirect-timestamp')?.value || '0', 10);
+
+    // Prevent redirect loops
+    const redirectTimestamp = parseInt(
+      req.cookies.get('redirect-timestamp')?.value || '0',
+      10
+    );
     const now = Date.now();
     const timeSinceLastRedirect = now - redirectTimestamp;
 
     if (redirectTimestamp && timeSinceLastRedirect < 5000) {
-      console.log('Middleware: Detected redirect loop, redirecting to /login without next');
+      console.log(
+        'Middleware: Detected redirect loop, redirecting to /login without next'
+      );
       const response = NextResponse.redirect(new URL('/login', req.url));
-      response.cookies.set('redirect-timestamp', '', { path: '/', expires: new Date(0) });
+      response.cookies.set('redirect-timestamp', '', {
+        path: '/',
+        expires: new Date(0),
+      });
       return response;
     }
 
-    response.cookies.set('redirect-timestamp', now.toString(), { path: '/', maxAge: 60 });
+    response.cookies.set('redirect-timestamp', now.toString(), {
+      path: '/',
+      maxAge: 60,
+    });
     return response;
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    console.log('Middleware: Failed to authenticate user:', userError?.message);
+    const redirectUrl = req.nextUrl.pathname + req.nextUrl.search;
+    const encodedRedirect = encodeURIComponent(redirectUrl);
+    console.log('Middleware: Redirecting to login with next:', redirectUrl);
+    const loginUrl = new URL(`/login?next=${encodedRedirect}`, req.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Fetch the user profile from the users table
   const { data: userProfile, error: profileError } = await supabase
     .from('users')
     .select('id, email, departmentId, roles (id, name, level)')
-    .eq('id', session.user.id)
+    .eq('id', user.id)
     .single();
 
   if (profileError || !userProfile) {
