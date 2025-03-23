@@ -1,6 +1,7 @@
 // src/app/api/activity-continuity-logs/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
 const log = (message: string, data?: any) =>
   console.log(
@@ -9,9 +10,27 @@ const log = (message: string, data?: any) =>
   );
 
 export async function GET(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -21,9 +40,24 @@ export async function GET(req: NextRequest) {
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const skip = (page - 1) * pageSize;
 
+    // Role-based access control
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    const whereClause: any = {};
+    if (userRoleLevel < 3) {
+      whereClause.activity = {
+        departmentId: userProfile.departmentId,
+      };
+    }
+
     log('Fetching continuity logs', { page, pageSize });
     const [logs, total] = await Promise.all([
       prisma.activityContinuityLog.findMany({
+        where: whereClause,
         skip,
         take: pageSize,
         orderBy: { startDate: 'desc' },
@@ -32,7 +66,7 @@ export async function GET(req: NextRequest) {
           createdBy: true,
         },
       }),
-      prisma.activityContinuityLog.count(),
+      prisma.activityContinuityLog.count({ where: whereClause }),
     ]);
 
     const serialized = logs.map((log) => ({
@@ -53,17 +87,36 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     log('Unauthorized access attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const user = JSON.parse(userJson);
-  const creatorId = user.id;
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const creatorId = userProfile.id;
+
+  let body: any; // Define body outside the try block
   try {
-    const { activityId, startDate, duration } = await req.json();
+    body = await req.json();
+    const { activityId, startDate, duration } = body;
     log('Creating continuity log', { activityId, startDate, duration });
 
     if (
@@ -76,6 +129,26 @@ export async function POST(req: NextRequest) {
         { error: 'Activity ID, start date, and duration are required' },
         { status: 400 },
       );
+    }
+
+    const activity = await prisma.activity.findUnique({
+      where: { id: activityId },
+    });
+
+    if (!activity) {
+      log('Activity not found', { activityId });
+      return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+    }
+
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    if (userRoleLevel < 3 && activity.departmentId !== userProfile.departmentId) {
+      log('Forbidden: User does not have permission to create a log for this activity');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const logEntry = await prisma.activityContinuityLog.create({
@@ -99,7 +172,7 @@ export async function POST(req: NextRequest) {
     );
   } catch (error: any) {
     if (error.code === 'P2003') {
-      log('Invalid activity ID', { activityId });
+      log('Invalid activity ID', { activityId: body?.activityId });
       return NextResponse.json(
         { error: 'Activity not found' },
         { status: 404 },
