@@ -5,7 +5,6 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { memo } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
 
 type LoginFormProps = {
   nextUrl?: string;
@@ -20,28 +19,24 @@ export const LoginForm = memo(({ nextUrl = '/dashboard' }: LoginFormProps) => {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      login(
-        { email, password },
-        {
-          onSuccess: async () => {
-            const { data } = await supabase.auth.getSession();
-            console.log('Session after login:', data.session);
-            if (data.session) {
-              // Set the access token cookie (7 days = 604800 seconds)
-              document.cookie = `supabase-auth-token=${data.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
-              // Set the refresh token cookie (30 days = 2592000 seconds, matching Supabase default)
-              document.cookie = `supabase-refresh-token=${data.session.refresh_token}; path=/; max-age=2592000; SameSite=Lax`;
-            }
-            console.log('Redirecting to:', nextUrl);
-            router.push(nextUrl);
-          },
-          onError: (error) => {
-            console.error('Login failed:', error);
-          },
-        },
-      );
+      try {
+        await login(
+          { email, password },
+          {
+            onSuccess: () => {
+              console.log('Redirecting to:', nextUrl);
+              router.push(nextUrl);
+            },
+            onError: (error) => {
+              console.error('Login failed:', error);
+            },
+          }
+        );
+      } catch (error) {
+        console.error('Login error:', error);
+      }
     },
-    [email, password, login, nextUrl, router],
+    [email, password, login, nextUrl, router]
   );
 
   return (
@@ -85,4 +80,5 @@ export const LoginForm = memo(({ nextUrl = '/dashboard' }: LoginFormProps) => {
 });
 
 LoginForm.displayName = 'LoginForm';
+
 // src/components/Auth/LoginForm.tsx
