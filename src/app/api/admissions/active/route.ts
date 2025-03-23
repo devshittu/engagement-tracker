@@ -1,66 +1,72 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-
-// export async function GET(request: Request) {
-//   try {
-//     const { searchParams } = new URL(request.url);
-//     const userIdParam = searchParams.get('userId');
-
-//     if (!userIdParam) {
-//       return NextResponse.json(
-//         { error: 'Missing userId' },
-//         { status: 400 }
-//       );
-//     }
-
-//     const userId = parseInt(userIdParam, 10);
-//     if (isNaN(userId)) {
-//       return NextResponse.json(
-//         { error: 'Invalid userId' },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Find the latest active admission for this user
-//     const admission = await prisma.admission.findFirst({
-//       where: {
-//         serviceUserId: userId,
-//         dischargeDate: null, // still active
-//       },
-//       orderBy: {
-//         admissionDate: 'desc',
-//       },
-//       include: {
-//         ward: true,
-//         serviceUser: true,
-//       },
-//     });
-
-//     return NextResponse.json({ admission });
-//   } catch (error) {
-//     console.error('Failed to fetch active admission:', error);
-//     return NextResponse.json(
-//       { error: 'Failed to fetch active admission' },
-//       { status: 500 }
-//     );
-//   }
-// }
-
 // src/app/api/admissions/active/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { supabase } from '@/lib/supabase';
 
-export async function GET() {
+const log = (message: string, data?: any) =>
+  console.log(
+    `[API:ADMISSIONS/ACTIVE] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
+
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    // Only active admissions (dischargeDate is null)
+    // Role-based access control
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    const whereClause: any = { dischargeDate: null };
+    if (userRoleLevel < 3) {
+      whereClause.admittedBy = {
+        departmentId: userProfile.departmentId,
+      };
+    }
+
     const admissions = await prisma.admission.findMany({
-      where: { dischargeDate: null },
+      where: whereClause,
       include: { serviceUser: true },
     });
-    return NextResponse.json(admissions);
+
+    const serialized = admissions.map((admission) => ({
+      ...admission,
+      admissionDate: admission.admissionDate.toISOString(),
+      dischargeDate: admission.dischargeDate?.toISOString() || null,
+    }));
+
+    return NextResponse.json(serialized);
   } catch (error) {
-    console.error('Failed to fetch admissions:', error);
+    log('Failed to fetch admissions:', error);
     return NextResponse.json(
       { error: 'Failed to fetch admissions' },
       { status: 500 },
     );
   }
 }
+// src/app/api/admissions/active/route.ts
