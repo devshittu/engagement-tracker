@@ -2,85 +2,85 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { BatchActivateInput } from '@/features/activities/types';
+import { supabase } from '@/lib/supabase';
 
-export async function POST(request: NextRequest) {
+const log = (message: string, data?: any) => console.log(`[API:ACTIVITIES/BATCH-ACTIVATE] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+
+export async function POST(req: NextRequest) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    log('Unauthorized access attempt');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabase
+    .from('users')
+    .select('id, email, departmentId, roles (id, name, level)')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !userProfile) {
+    log('Failed to fetch user profile:', profileError?.message);
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const creatorId = userProfile.id;
+  const { activityIds }: { activityIds: number[] } = await req.json();
+
+  if (!Array.isArray(activityIds) || activityIds.length === 0) {
+    log('Invalid request: activityIds must be a non-empty array');
+    return NextResponse.json({ error: 'Invalid request: activityIds must be a non-empty array' }, { status: 400 });
+  }
+
   try {
-    const userHeader = request.headers.get('x-supabase-user');
-    if (!userHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = JSON.parse(userHeader);
-    const userId = user.id;
-
-    const body: BatchActivateInput[] = await request.json();
-    if (!Array.isArray(body) || body.length === 0) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-    }
-
-    const currentDate = new Date();
-
-    await prisma.$transaction(async (tx) => {
-      for (const { activityId, activate } of body) {
-        if (activate) {
-          // Check if the activity is already active
-          const existingLog = await tx.activityContinuityLog.findFirst({
-            where: {
-              activityId,
-              discontinuedDate: null,
-            },
-          });
-
-          if (!existingLog) {
-            // Create a new continuity log entry
-            await tx.activityContinuityLog.create({
-              data: {
-                activityId,
-                createdById: userId,
-                startDate: currentDate,
-                discontinuedDate: null,
-                reason: null,
-                duration: null,
-              },
-            });
-          }
-        } else {
-          // Discontinue the activity by updating the most recent log
-          const existingLog = await tx.activityContinuityLog.findFirst({
-            where: {
-              activityId,
-              discontinuedDate: null,
-            },
-            orderBy: { startDate: 'desc' },
-          });
-
-          if (existingLog) {
-            await tx.activityContinuityLog.update({
-              where: { id: existingLog.id },
-              data: {
-                discontinuedDate: currentDate,
-                duration: Math.floor(
-                  (currentDate.getTime() -
-                    new Date(existingLog.startDate).getTime()) /
-                    (1000 * 60 * 60 * 24),
-                ),
-              },
-            });
-          }
-        }
-      }
+    // Fetch activities to check permissions
+    const activities = await prisma.activity.findMany({
+      where: { id: { in: activityIds } },
     });
 
-    return NextResponse.json(
-      { message: 'Activities updated successfully' },
-      { status: 200 },
-    );
-  } catch (error: unknown) {
-    console.error('Error in batch-activate:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 },
-    );
+    if (activities.length !== activityIds.length) {
+      log('Some activities not found', { requested: activityIds.length, found: activities.length });
+      return NextResponse.json({ error: 'Some activities not found' }, { status: 404 });
+    }
+
+    if (userProfile.roles.length === 0) {
+      log('User has no roles assigned');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const userRoleLevel = userProfile.roles[0].level;
+    // Role-based access control: Ensure user can activate all specified activities
+    if (userRoleLevel < 3) {
+      const invalidActivities = activities.filter(
+        (activity) => activity.departmentId !== userProfile.departmentId
+      );
+      if (invalidActivities.length > 0) {
+        log('Forbidden: User does not have permission to activate some activities');
+        return NextResponse.json({ error: 'Forbidden: You do not have permission to activate some activities' }, { status: 403 });
+      }
+    }
+
+    // Create activity continuity logs for each activity
+    const logEntries = await prisma.activityContinuityLog.createMany({
+      data: activityIds.map((activityId) => ({
+        activityId,
+        startDate: new Date(),
+        duration: 180, // Default 3 hours as per seed
+        createdById: creatorId,
+      })),
+    });
+
+    log('Batch activated activities', { count: logEntries.count });
+    return NextResponse.json({ message: `Successfully activated ${logEntries.count} activities` }, { status: 201 });
+  } catch (error: any) {
+    log('Failed to batch activate activities', error);
+    return NextResponse.json({ error: 'Failed to batch activate activities' }, { status: 500 });
   }
 }
