@@ -30,11 +30,10 @@ const fetchActivities = async (
     params.departmentId = departmentId.toString();
   }
 
-  const response = await apiClient.get<FetchActivitiesResponse>(
+  // apiClient.get returns the data directly due to the response interceptor
+  const response: FetchActivitiesResponse = await apiClient.get(
     '/api/activities',
-    {
-      params,
-    },
+    { params }
   );
   return {
     activities: response.activities.map((activity: Activity) => ({
@@ -49,7 +48,8 @@ const fetchActivities = async (
 };
 
 const fetchActiveActivities = async (): Promise<Activity[]> => {
-  const response = await apiClient.get<Activity[]>('/api/activities/active');
+  // apiClient.get returns the data directly (Activity[])
+  const response: Activity[] = await apiClient.get('/api/activities/active');
   return response.map((activity: Activity) => ({
     ...activity,
     createdAt: new Date(activity.createdAt).toISOString(),
@@ -60,7 +60,9 @@ const fetchActiveActivities = async (): Promise<Activity[]> => {
 };
 
 const fetchDepartments = async (): Promise<Department[]> => {
-  return apiClient.get<Department[]>('/api/departments');
+  // apiClient.get returns the data directly (Department[])
+  const response: Department[] = await apiClient.get('/api/departments');
+  return response;
 };
 
 export const useActivities = (selectedDepartmentId?: number) => {
