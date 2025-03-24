@@ -1,4 +1,4 @@
-// // src/app/api/activities/active/route.ts
+// src/app/api/activities/active/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supabase } from '@/lib/supabase';
