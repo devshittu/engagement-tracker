@@ -1,228 +1,139 @@
-import { supabase } from '@/lib/supabase';
-import { redirect } from 'next/navigation';
-import ClientAuthGuard from './ClientAuthGuard';
-import { headers } from 'next/headers';
 
-// Server-side authentication check
+// import { headers } from 'next/headers';
+// import ClientAuthGuard from './ClientAuthGuard';
+
+// export default async function ProtectedLayout({
+//   children,
+// }: {
+//   children: React.ReactNode;
+// }) {
+//   console.log('Server ProtectedLayout: Starting session check');
+
+//   // Ensure headers() is used correctly
+//   const headersList = headers();
+//   const userProfileJson = headersList.get('x-supabase-user');
+
+//   if (!userProfileJson) {
+//     console.log('Server ProtectedLayout: No user profile found in headers, relying on middleware');
+//     return <ClientAuthGuard>{children}</ClientAuthGuard>;
+//   }
+
+//   let userProfile = null;
+//   try {
+//     userProfile = JSON.parse(userProfileJson);
+//     console.log('Server ProtectedLayout: User authenticated from middleware:', userProfile.id);
+//   } catch (error) {
+//     console.error('Server ProtectedLayout: Failed to parse user profile:', error);
+//     return <ClientAuthGuard>{children}</ClientAuthGuard>;
+//   }
+
+//   return <ClientAuthGuard>{children}</ClientAuthGuard>;
+// }
+
+import { headers } from 'next/headers';
+import ClientAuthGuard from './ClientAuthGuard';
+import { supabase } from '@/lib/supabase';
+
 export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Get cookies from the request headers
+  console.log('Server ProtectedLayout: Starting session check');
+
+  // Await headers() to access dynamic headers
   const headersList = await headers();
-  const cookieHeader = headersList.get('cookie') || '';
-  const tokenMatch = cookieHeader.match(/supabase-auth-token=([^;]+)/);
-  const refreshTokenMatch = cookieHeader.match(
-    /supabase-refresh-token=([^;]+)/,
-  );
-  const token: string | null =
-    tokenMatch && tokenMatch[1] ? tokenMatch[1] : null;
-  const refreshToken: string | null =
-    refreshTokenMatch && refreshTokenMatch[1] ? refreshTokenMatch[1] : null;
+  
+  // Check if the middleware has set the x-supabase-user header
+  const userProfileJson = headersList.get('x-supabase-user');
+  let userProfile = null;
 
-  let user = null;
-  let error = null;
-
-  console.log('ProtectedLayout: Token from cookie:', token);
-  console.log('ProtectedLayout: Refresh token from cookie:', refreshToken);
-
-  if (token) {
-    // Use the token to authenticate the user with Supabase
-    const { data, error: authError } = await supabase.auth.getUser(token);
-    user = data.user;
-    error = authError;
-    console.log('ProtectedLayout: getUser result:', {
-      user: user?.id,
-      error: authError?.message,
-    });
+  if (userProfileJson) {
+    try {
+      userProfile = JSON.parse(userProfileJson);
+      console.log('Server ProtectedLayout: User authenticated from middleware:', userProfile.id);
+    } catch (error) {
+      console.error('Server ProtectedLayout: Failed to parse user profile:', error);
+    }
   }
 
-  if (!user || error) {
-    // Attempt to get the session
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession();
-    console.log('ProtectedLayout: getSession result:', {
-      session: sessionData.session?.user?.id,
-      error: sessionError?.message,
-    });
+  // If the middleware didn't provide a user profile, attempt to get the session
+  if (!userProfile) {
+    console.log('Server ProtectedLayout: No user profile from middleware, checking session');
 
-    if (sessionError || !sessionData.session) {
-      // If session retrieval fails, try refreshing the session with the refresh token
-      if (refreshToken) {
-        const { data: refreshData, error: refreshError } =
-          await supabase.auth.setSession({
+    const cookieHeader = headersList.get('cookie') || '';
+    const tokenMatch = cookieHeader.match(/supabase-auth-token=([^;]+)/);
+    const refreshTokenMatch = cookieHeader.match(/supabase-refresh-token=([^;]+)/);
+    const token: string | null = tokenMatch && tokenMatch[1] ? tokenMatch[1] : null;
+    const refreshToken: string | null = refreshTokenMatch && refreshTokenMatch[1] ? refreshTokenMatch[1] : null;
+
+    console.log('ProtectedLayout: Token from cookie:', token);
+    console.log('ProtectedLayout: Refresh token from cookie:', refreshToken);
+
+    let user = null;
+    if (token) {
+      const { data, error: authError } = await supabase.auth.getUser(token);
+      user = data.user;
+      console.log('ProtectedLayout: getUser result:', {
+        user: user?.id,
+        error: authError?.message,
+      });
+    }
+
+    if (!user) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      console.log('ProtectedLayout: getSession result:', {
+        session: sessionData.session?.user?.id,
+        error: sessionError?.message,
+      });
+
+      if (sessionError || !sessionData.session) {
+        if (refreshToken) {
+          const { data: refreshData, error: refreshError } = await supabase.auth.setSession({
             access_token: token || '',
             refresh_token: refreshToken,
           });
-        console.log('ProtectedLayout: setSession result:', {
-          user: refreshData?.user?.id,
-          error: refreshError?.message,
-        });
+          console.log('ProtectedLayout: setSession result:', {
+            user: refreshData?.user?.id,
+            error: refreshError?.message,
+          });
 
-        if (refreshError || !refreshData?.user) {
-          console.log(
-            'Server-side auth failed:',
-            refreshError?.message || sessionError?.message,
-          );
-          // Check for redirect loop using a timestamp cookie
-          const redirectTimestampMatch = cookieHeader.match(
-            /redirect-timestamp=([^;]+)/,
-          );
-          const redirectTimestamp = redirectTimestampMatch
-            ? parseInt(redirectTimestampMatch[1], 10)
-            : 0;
-          const now = Date.now();
-          const timeSinceLastRedirect = now - redirectTimestamp;
-
-          if (redirectTimestamp && timeSinceLastRedirect < 5000) {
-            console.log(
-              'ProtectedLayout: Detected redirect loop, redirecting to /login without next',
-            );
-            // Clear cookies to break the loop
-            const responseHeaders = new Headers();
-            responseHeaders.append(
-              'Set-Cookie',
-              'supabase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-            );
-            responseHeaders.append(
-              'Set-Cookie',
-              'supabase-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-            );
-            responseHeaders.append(
-              'Set-Cookie',
-              'redirect-timestamp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-            );
-            redirect('/login');
+          if (refreshError || !refreshData?.user) {
+            console.log('Server ProtectedLayout: Session refresh failed, relying on middleware for redirect');
+            return <ClientAuthGuard>{children}</ClientAuthGuard>;
+          } else {
+            user = refreshData.user;
           }
-
-          // Get the full request URL
-          const fullPath =
-            headersList.get('x-invoke-path') ||
-            headersList.get('x-url') ||
-            '/dashboard';
-          const normalizedPath = fullPath.includes('/login')
-            ? '/dashboard'
-            : fullPath;
-          const encodedRedirect = encodeURIComponent(normalizedPath);
-
-          // Set the redirect timestamp cookie
-          const responseHeaders = new Headers();
-          responseHeaders.append(
-            'Set-Cookie',
-            `redirect-timestamp=${now}; path=/; max-age=60`,
-          );
-          redirect(`/login?next=${encodedRedirect}`);
         } else {
-          user = refreshData.user;
-          token = refreshData.session?.access_token;
+          console.log('Server ProtectedLayout: No refresh token, relying on middleware for redirect');
+          return <ClientAuthGuard>{children}</ClientAuthGuard>;
         }
       } else {
-        console.log(
-          'ProtectedLayout: No refresh token available, redirecting to login',
-        );
-        // Check for redirect loop
-        const redirectTimestampMatch = cookieHeader.match(
-          /redirect-timestamp=([^;]+)/,
-        );
-        const redirectTimestamp = redirectTimestampMatch
-          ? parseInt(redirectTimestampMatch[1], 10)
-          : 0;
-        const now = Date.now();
-        const timeSinceLastRedirect = now - redirectTimestamp;
-
-        if (redirectTimestamp && timeSinceLastRedirect < 5000) {
-          console.log(
-            'ProtectedLayout: Detected redirect loop, redirecting to /login without next',
-          );
-          // Clear cookies to break the loop
-          const responseHeaders = new Headers();
-          responseHeaders.append(
-            'Set-Cookie',
-            'supabase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-          );
-          responseHeaders.append(
-            'Set-Cookie',
-            'supabase-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-          );
-          responseHeaders.append(
-            'Set-Cookie',
-            'redirect-timestamp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-          );
-          redirect('/login');
-        }
-
-        // Get the full request URL
-        const fullPath =
-          headersList.get('x-invoke-path') ||
-          headersList.get('x-url') ||
-          '/dashboard';
-        const normalizedPath = fullPath.includes('/login')
-          ? '/dashboard'
-          : fullPath;
-        const encodedRedirect = encodeURIComponent(normalizedPath);
-
-        // Set the redirect timestamp cookie
-        const responseHeaders = new Headers();
-        responseHeaders.append(
-          'Set-Cookie',
-          `redirect-timestamp=${now}; path=/; max-age=60`,
-        );
-        redirect(`/login?next=${encodedRedirect}`);
+        user = sessionData.session.user;
       }
-    } else {
-      user = sessionData.session.user;
-      token = sessionData.session.access_token;
+    }
+
+    // Fetch the user profile if we have a user
+    if (user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('id, email, departmentId')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.log('Server ProtectedLayout: Failed to fetch user profile:', profileError?.message);
+        return <ClientAuthGuard>{children}</ClientAuthGuard>;
+      }
+
+      userProfile = profile;
+      console.log('Server ProtectedLayout: User authenticated via session:', userProfile.id);
     }
   }
 
-  if (!user) {
-    console.log('ProtectedLayout: No user found after all attempts');
-    const redirectTimestampMatch = cookieHeader.match(
-      /redirect-timestamp=([^;]+)/,
-    );
-    const redirectTimestamp = redirectTimestampMatch
-      ? parseInt(redirectTimestampMatch[1], 10)
-      : 0;
-    const now = Date.now();
-    const timeSinceLastRedirect = now - redirectTimestamp;
-
-    if (redirectTimestamp && timeSinceLastRedirect < 5000) {
-      console.log(
-        'ProtectedLayout: Detected redirect loop, redirecting to /login without next',
-      );
-      // Clear cookies to break the loop
-      const responseHeaders = new Headers();
-      responseHeaders.append(
-        'Set-Cookie',
-        'supabase-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-      );
-      responseHeaders.append(
-        'Set-Cookie',
-        'supabase-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-      );
-      responseHeaders.append(
-        'Set-Cookie',
-        'redirect-timestamp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT',
-      );
-      redirect('/login');
-    }
-
-    const fullPath =
-      headersList.get('x-invoke-path') ||
-      headersList.get('x-url') ||
-      '/dashboard';
-    const normalizedPath = fullPath.includes('/login')
-      ? '/dashboard'
-      : fullPath;
-    const encodedRedirect = encodeURIComponent(normalizedPath);
-
-    const responseHeaders = new Headers();
-    responseHeaders.append(
-      'Set-Cookie',
-      `redirect-timestamp=${now}; path=/; max-age=60`,
-    );
-    redirect(`/login?next=${encodedRedirect}`);
+  if (!userProfile) {
+    console.log('Server ProtectedLayout: No user profile after all attempts, relying on middleware');
+    return <ClientAuthGuard>{children}</ClientAuthGuard>;
   }
 
   return <ClientAuthGuard>{children}</ClientAuthGuard>;
