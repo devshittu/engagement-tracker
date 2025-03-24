@@ -1,4 +1,4 @@
-// src/components/Auth/LoginForm.tsx
+// src/features/auth/components/LoginForm.tsx
 'use client';
 
 import { useCallback, useState } from 'react';
@@ -81,4 +81,4 @@ export const LoginForm = memo(({ nextUrl = '/dashboard' }: LoginFormProps) => {
 
 LoginForm.displayName = 'LoginForm';
 
-// src/components/Auth/LoginForm.tsx
+// src/features/auth/components/LoginForm.tsx
