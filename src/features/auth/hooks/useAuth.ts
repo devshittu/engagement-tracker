@@ -1,5 +1,4 @@
 // src/features/auth/hooks/useAuth.ts
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
@@ -8,6 +7,7 @@ type AuthUser = {
   name: string | null;
   email: string;
   departmentId: number;
+  roles: { id: number; name: string; level: number }[];
 };
 
 type LoginCredentials = {
@@ -31,7 +31,7 @@ export const useAuth = () => {
 
       const { data: profile, error: profileError } = await supabase
         .from('users')
-        .select('id, name, email, departmentId')
+        .select('id, name, email, departmentId, roles (id, name, level)')
         .eq('id', session.user.id)
         .single();
 
@@ -45,6 +45,7 @@ export const useAuth = () => {
         name: profile.name,
         email: profile.email,
         departmentId: profile.departmentId,
+        roles: profile.roles || [],
       };
 
       console.log('useAuth: Fetched auth user:', userProfile);
