@@ -26,6 +26,7 @@ export const LoginForm = memo(({ nextUrl = '/dashboard' }: LoginFormProps) => {
             onSuccess: () => {
               console.log('Redirecting to:', nextUrl);
               router.push(nextUrl);
+              router.refresh(); // Force revalidation
             },
             onError: (error) => {
               console.error('Login failed:', error);
@@ -80,5 +81,4 @@ export const LoginForm = memo(({ nextUrl = '/dashboard' }: LoginFormProps) => {
 });
 
 LoginForm.displayName = 'LoginForm';
-
 // src/features/auth/components/LoginForm.tsx
