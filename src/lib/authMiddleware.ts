@@ -6,7 +6,7 @@ type UserProfile = {
   id: string;
   email: string;
   departmentId: number;
-  role: { id: number; name: string; level: number };
+  roles: { id: number; name: string; level: number }[];
 };
 
 type AuthResult = {
@@ -20,33 +20,24 @@ export const authenticateRequest = async (
   requiredRoleName?: string,
   log: (message: string, data?: any) => void = () => {},
 ): Promise<AuthResult | NextResponse> => {
-  const supabase = supabaseAdmin; // Uses service key, no cookie config needed
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    log('Failed to authenticate user via cookies:', userError?.message);
-
-    // Fallback to token if cookies fail
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      log('Unauthorized: Missing or invalid Authorization header');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    log('Bearer token received:', { token: token.slice(0, 10) + '...' });
-    const { data: { user: tokenUser }, error: tokenError } = await supabase.auth.getUser(token);
-    if (tokenError || !tokenUser) {
-      log('Failed to authenticate user via token:', tokenError?.message);
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    // Use tokenUser as user
-    user = tokenUser;
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    log('Unauthorized access attempt: Missing or invalid Authorization header');
+    return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
   }
 
-  const { data: userProfile, error: profileError } = await supabase
+  const token = authHeader.split(' ')[1];
+  log('Bearer token received:', { token: token.slice(0, 10) + '...' }); // Truncate for security
+
+  const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+  if (userError || !user) {
+    log('Failed to authenticate user:', userError?.message);
+    return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+  }
+
+  const { data: userProfile, error: profileError } = await supabaseAdmin
     .from('users')
-    .select('id, email, departmentId, role (id, name, level)')
+    .select('id, email, departmentId, roles (id, name, level)')
     .eq('id', user.id)
     .single();
 
@@ -55,18 +46,19 @@ export const authenticateRequest = async (
     return NextResponse.json({ error: 'Unauthorized: User profile not found' }, { status: 401 });
   }
 
-  const userRole = userProfile.role;
-  if (!userRole) {
-    log('User has no role assigned', { userId: user.id });
-    return NextResponse.json({ error: 'Forbidden: No role assigned' }, { status: 403 });
+  const roles = userProfile.roles || [];
+  if (roles.length === 0) {
+    log('User has no roles assigned', { userId: user.id });
+    return NextResponse.json({ error: 'Forbidden: No roles assigned' }, { status: 403 });
   }
 
+  const userRole = roles[0]; // Assuming one role per user as per schema
   if (requiredRoleLevel > 0 && userRole.level < requiredRoleLevel && userRole.name !== 'Super Admin') {
     log('Insufficient permissions: Role level too low', {
       requiredLevel: requiredRoleLevel,
       userLevel: userRole.level,
     });
-    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden: Insufficient role level' }, { status: 403 });
   }
 
   if (requiredRoleName && userRole.name !== requiredRoleName) {
@@ -74,7 +66,7 @@ export const authenticateRequest = async (
       requiredRole: requiredRoleName,
       userRole: userRole.name,
     });
-    return NextResponse.json({ error: `Only ${requiredRoleName} can perform this action` }, { status: 403 });
+    return NextResponse.json({ error: `Forbidden: Only ${requiredRoleName} can perform this action` }, { status: 403 });
   }
 
   log('User authenticated successfully', { userId: user.id, role: userRole.name });
