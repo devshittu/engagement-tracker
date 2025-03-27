@@ -1,18 +1,16 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { PUBLIC_ROUTES, API_ROUTES, PROTECTED_ROUTES } from '@/config/routes';
+import { PUBLIC_ROUTES, API_ROUTES } from '@/config/routes';
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
   const isApiRoute = API_ROUTES.some((route) => pathname.startsWith(route));
-  const isProtectedRoute = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
 
   console.log('Middleware: Path:', pathname);
   console.log('Middleware: Is public route:', isPublicRoute);
   console.log('Middleware: Is API route:', isApiRoute);
-  console.log('Middleware: Is protected route:', isProtectedRoute);
 
   let supabaseResponse = NextResponse.next({ request: req });
 
@@ -31,33 +29,28 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // Skip auth for truly public routes
-  if (isPublicRoute && !isApiRoute && !isProtectedRoute) {
-    return supabaseResponse;
-  }
-
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
     console.log('Middleware: Failed to authenticate user:', userError?.message);
-    if (isProtectedRoute && !pathname.startsWith('/login') && !pathname.startsWith('/auth')) {
+    if (!isPublicRoute && !pathname.startsWith('/login') && !pathname.startsWith('/auth')) {
       const redirectUrl = pathname + req.nextUrl.search;
       const encodedRedirect = encodeURIComponent(redirectUrl || '/dashboard');
       console.log('Middleware: Redirecting to login with next:', redirectUrl);
       const loginUrl = new URL(`/login?next=${encodedRedirect}`, req.url);
       return NextResponse.redirect(loginUrl);
     }
-    return supabaseResponse;
+    return supabaseResponse; // Allow public routes or API routes to proceed to authMiddleware
   }
 
   const { data: userProfile, error: profileError } = await supabase
     .from('users')
-    .select('id, email, departmentId, role (id, name, level)') // Adjusted to singular 'role'
+    .select('id, email, departmentId, roles (id, name, level)')
     .eq('id', user.id)
     .single();
 
   if (profileError || !userProfile) {
     console.log('Middleware: Failed to fetch user profile:', profileError?.message);
-    if (isProtectedRoute && !pathname.startsWith('/login')) {
+    if (!isPublicRoute && !pathname.startsWith('/login')) {
       const redirectUrl = pathname + req.nextUrl.search;
       const encodedRedirect = encodeURIComponent(redirectUrl || '/dashboard');
       const loginUrl = new URL(`/login?next=${encodedRedirect}`, req.url);
@@ -68,7 +61,6 @@ export async function middleware(req: NextRequest) {
 
   console.log('Middleware: Authenticated user:', userProfile.id, { path: pathname });
   supabaseResponse.headers.set('x-supabase-user', JSON.stringify(userProfile));
-
   return supabaseResponse;
 }
 
