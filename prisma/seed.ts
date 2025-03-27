@@ -635,3 +635,4 @@ main()
     await prisma.$disconnect();
     log('Prisma disconnected');
   });
+// prisma/seed.ts
