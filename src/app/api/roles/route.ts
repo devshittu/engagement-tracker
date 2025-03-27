@@ -67,6 +67,7 @@
 
 //   return NextResponse.json(role, { status: 201 });
 // }
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
@@ -167,3 +168,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+// src/app/api/roles/route.ts
