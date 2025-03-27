@@ -1,4 +1,4 @@
-// axios-extensions.d.ts
+// src/lib/axios-extensions.d.ts
 import { AxiosRequestConfig } from 'axios';
 
 declare module 'axios' {
@@ -6,3 +6,4 @@ declare module 'axios' {
     requiresAuth?: boolean;
   }
 }
+// src/lib/axios-extensions.d.ts
