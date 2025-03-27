@@ -89,6 +89,10 @@
 //   };
 // };
 
+
+
+// src/features/auth/hooks/useAuth.ts
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
