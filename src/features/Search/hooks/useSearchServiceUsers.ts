@@ -1,5 +1,7 @@
+'use client';
+
 import { useInfiniteQuery, QueryFunctionContext } from '@tanstack/react-query';
-import axios from 'axios';
+import { apiClient } from '@/lib/api-client';
 import { ServiceUsersResponse } from '@/types/serviceUser';
 
 export type FetchSearchParams = {
@@ -13,8 +15,8 @@ type SearchQueryKey = ['searchServiceUsers', FetchSearchParams];
 const fetchSearchServiceUsers = async (
   context: QueryFunctionContext<SearchQueryKey, number>,
 ): Promise<ServiceUsersResponse> => {
-  const { pageParam = 1, queryKey } = context;
-  const [, { q, sortBy, order }] = queryKey;
+  const { pageParam = 1 } = context;
+  const [, { q, sortBy, order }] = context.queryKey;
 
   // Validate input – if empty, return empty data
   if (!q.trim()) {
@@ -28,10 +30,9 @@ const fetchSearchServiceUsers = async (
   params.set('sortBy', sortBy);
   params.set('order', order);
 
-  const response = await axios.get<ServiceUsersResponse>(
-    `/api/serviceUsers/search?${params.toString()}`,
-  );
-  return response.data;
+  const url = `/api/service-users/search?${params.toString()}`;
+  const response = await apiClient.get<ServiceUsersResponse>(url);
+  return response;
 };
 
 export const useSearchServiceUsers = ({
@@ -56,3 +57,5 @@ export const useSearchServiceUsers = ({
     },
     enabled: q.trim().length > 0, // Only run the query if there's a search query
   });
+
+  // src/features/Search/hooks/useSearchServiceUsers.ts
