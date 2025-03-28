@@ -1,6 +1,6 @@
 // src/features/auth/hooks/useAuth.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import axios from 'axios';
 
 type AuthUser = {
   id: string;
@@ -21,35 +21,16 @@ export const useAuth = () => {
   const { data: user, isLoading } = useQuery<AuthUser | null>({
     queryKey: ['authUser'],
     queryFn: async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('useAuth: getSession result:', { session: session?.user?.id, error: sessionError?.message });
-
-      if (sessionError || !session?.user) {
-        console.log('useAuth: No session found:', sessionError?.message);
+      try {
+        const response = await axios.get('/api/auth/me', { withCredentials: true });
+        console.log('useAuth: Fetched auth user:', response.data.user);
+        return response.data.user || null;
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          console.log('useAuth: No user session found:', error.response?.status);
+        }
         return null;
       }
-
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('id, name, email, departmentId, roles (id, name, level)')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profileError || !profile) {
-        console.error('useAuth: Profile fetch error:', profileError?.message);
-        return null;
-      }
-
-      const userProfile: AuthUser = {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        departmentId: profile.departmentId,
-        roles: profile.roles || [],
-      };
-
-      console.log('useAuth: Fetched auth user:', userProfile);
-      return userProfile;
     },
     staleTime: Infinity,
     refetchOnWindowFocus: false,
@@ -57,22 +38,22 @@ export const useAuth = () => {
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: LoginCredentials) => {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
-      return data;
+      const response = await axios.post('/api/auth/login', { email, password }, { withCredentials: true });
+      return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(['authUser'], data.user);
       queryClient.invalidateQueries({ queryKey: ['authUser'] });
     },
-    onError: (error: Error) => {
-      console.error('useAuth: Login error:', error.message);
+    onError: (error: any) => {
+      console.error('useAuth: Login error:', error.response?.data?.error || error.message);
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw new Error(error.message);
+      await axios.post('/api/auth/logout', {}, { withCredentials: true });
+      document.cookie = 'sb-access-token=; Max-Age=0; path=/;';
     },
     onSuccess: () => {
       queryClient.setQueryData(['authUser'], null);
@@ -92,5 +73,4 @@ export const useAuth = () => {
     isLoggingOut: logoutMutation.isPending,
   };
 };
-
 // src/features/auth/hooks/useAuth.ts
