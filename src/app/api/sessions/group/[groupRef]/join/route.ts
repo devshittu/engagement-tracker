@@ -1,24 +1,20 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionType, SessionStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 type Params = { params: { groupRef: string } };
 
 const log = (message: string, data?: any) =>
-  console.log(
-    `[API:SESSIONS/GROUP/JOIN] ${message}`,
-    data ? JSON.stringify(data, null, 2) : '',
-  );
+  console.log(`[API:SESSIONS/GROUP/JOIN] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
-  const user = JSON.parse(userJson);
-  const facilitatorId = user.id;
+  const { userId } = authResult;
   const { groupRef } = params;
 
   if (!groupRef || typeof groupRef !== 'string') {
@@ -64,23 +60,19 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
     if (!admission) {
       log('Admission not found', { admissionId });
-      return NextResponse.json(
-        { error: 'Admission not found' },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Admission not found' }, { status: 404 });
     }
 
     const newSession = await prisma.session.create({
       data: {
         type: SessionType.GROUP,
         status: SessionStatus.SCHEDULED,
-        facilitatedById: facilitatorId,
+        facilitatedById: userId,
         activityLogId: existingSession.activityLogId,
         admissionId,
         groupRef,
         groupDescription: existingSession.groupDescription,
         timeIn: new Date(),
-        // duration: existingSession.duration,
       },
       include: {
         facilitatedBy: true,
@@ -90,27 +82,23 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
 
     log('User added to group session', { groupRef, admissionId });
-    return NextResponse.json(
-      {
-        ...newSession,
-        timeIn: newSession.timeIn.toISOString(),
-        timeOut: newSession.timeOut?.toISOString() || null,
-        createdAt: newSession.createdAt.toISOString(),
-        updatedAt: newSession.updatedAt?.toISOString() || null,
-      },
-      { status: 201 },
-    );
-  } catch (error: any) {
-    log('Failed to join group session', error);
-    if (error.code === 'P2003') {
-      return NextResponse.json(
-        { error: 'Invalid admission ID' },
-        { status: 404 },
-      );
+    return NextResponse.json({
+      ...newSession,
+      timeIn: newSession.timeIn.toISOString(),
+      timeOut: newSession.timeOut?.toISOString() || null,
+      createdAt: newSession.createdAt.toISOString(),
+      updatedAt: newSession.updatedAt?.toISOString() || null,
+    }, { status: 201 });
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      log('Invalid admission ID');
+      return NextResponse.json({ error: 'Invalid admission ID' }, { status: 404 });
     }
-    return NextResponse.json(
-      { error: 'Failed to join group session' },
-      { status: 500 },
-    );
+    log('Failed to join group session', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to join group session' }, { status: 500 });
   }
 }
+
+// src/app/api/sessions/group/[groupRef]/join/route.ts
