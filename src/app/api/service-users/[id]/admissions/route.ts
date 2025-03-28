@@ -1,33 +1,31 @@
-import { ServiceUser } from '@/types/serviceUser';
 // src/app/api/service-users/[id]/admissions/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { log } from '@/lib/reportUtils';
+import { authenticateRequest } from '@/lib/authMiddleware';
+import { Prisma } from '@prisma/client';
 
 type Params = { params: { id: string } };
 
-export async function GET(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('SERVICE-USERS:ADMISSIONS', 'Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+const log = (message: string, data?: any) =>
+  console.log(`[API:SERVICE-USERS/ADMISSIONS] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
-  const { id: ServiceUserId } = params;
-  const id = parseInt(ServiceUserId);
-  if (isNaN(id)) {
-    log('SERVICE-USERS:ADMISSIONS', 'Invalid serviceUserId', { id });
-    return NextResponse.json(
-      { error: 'Invalid serviceUserId' },
-      { status: 400 },
-    );
+export async function GET(req: NextRequest, { params }: Params) {
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const { id: serviceUserIdStr } = params;
+  const serviceUserId: number = parseInt(serviceUserIdStr, 10);
+
+  if (isNaN(serviceUserId)) {
+    log('Invalid serviceUserId', { serviceUserId });
+    return NextResponse.json({ error: 'Invalid serviceUserId' }, { status: 400 });
   }
 
   try {
-    log('SERVICE-USERS:ADMISSIONS', 'Fetching admissions', { id });
+    log('Fetching admissions', { serviceUserId });
 
     const admissions = await prisma.admission.findMany({
-      where: { serviceUserId: id },
+      where: { serviceUserId },
       include: {
         ward: true,
         admittedBy: { select: { email: true } },
@@ -37,15 +35,12 @@ export async function GET(req: NextRequest, { params }: Params) {
     });
 
     if (admissions.length === 0) {
-      log('SERVICE-USERS:ADMISSIONS', 'No admissions found', { id });
-      return NextResponse.json(
-        { error: 'No admissions found' },
-        { status: 404 },
-      );
+      log('No admissions found', { serviceUserId });
+      return NextResponse.json({ error: 'No admissions found' }, { status: 404 });
     }
 
     const response = {
-      serviceUserId: id,
+      serviceUserId,
       admissions: admissions.map((admission) => ({
         id: admission.id,
         admissionDate: admission.admissionDate.toISOString(),
@@ -57,17 +52,13 @@ export async function GET(req: NextRequest, { params }: Params) {
       })),
     };
 
-    log('SERVICE-USERS:ADMISSIONS', 'Admissions fetched', {
-      id,
-      count: admissions.length,
-    });
+    log('Admissions fetched', { serviceUserId, count: admissions.length });
     return NextResponse.json(response);
-  } catch (error) {
-    log('SERVICE-USERS:ADMISSIONS', 'Failed to fetch admissions', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch admissions' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    log('Failed to fetch admissions', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to fetch admissions' }, { status: 500 });
   }
 }
 
