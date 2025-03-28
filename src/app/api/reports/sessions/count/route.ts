@@ -222,3 +222,5 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// src/app/api/reports/sessions/count/route.ts
