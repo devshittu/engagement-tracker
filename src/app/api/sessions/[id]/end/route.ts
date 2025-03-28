@@ -1,23 +1,21 @@
 // src/app/api/sessions/[id]/end/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 type Params = { params: { id: string } };
 
 const log = (message: string, data?: any) =>
-  console.log(
-    `[API:SESSIONS/END] ${message}`,
-    data ? JSON.stringify(data, null, 2) : '',
-  );
+  console.log(`[API:SESSIONS/END] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
+  const { userId } = authResult;
   const { id } = params;
   const sessionId = parseInt(id);
 
@@ -49,16 +47,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt?.toISOString() || null,
     });
-  } catch (error: any) {
-    if (error.code === 'P2025') {
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       log('Session not found', { id: sessionId });
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
-    log('Failed to end session', error);
-    return NextResponse.json(
-      { error: 'Failed to end session' },
-      { status: 500 },
-    );
+    log('Failed to end session', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to end session' }, { status: 500 });
   }
 }
 // src/app/api/sessions/[id]/end/route.ts
