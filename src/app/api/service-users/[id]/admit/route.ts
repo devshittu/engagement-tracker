@@ -1,33 +1,25 @@
-// src/app/api/serviceUsers/[id]/admit/route.ts
+// src/app/api/service-users/[id]/admit/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
+import { Prisma } from '@prisma/client';
 
 type Params = { params: { id: string } };
 
 const log = (message: string, data?: any) =>
-  console.log(
-    `[API:SERVICE_USERS/ADMIT] ${message}`,
-    data ? JSON.stringify(data, null, 2) : '',
-  );
+  console.log(`[API:SERVICE-USERS/ADMIT] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
-  const user = JSON.parse(userJson);
-  const creatorId = user.id;
-  const { id } = params;
-  const serviceUserId = parseInt(id);
+  const { userId } = authResult;
+  const { id: serviceUserIdStr } = params;
+  const serviceUserId: number = parseInt(serviceUserIdStr, 10);
 
   if (isNaN(serviceUserId)) {
-    log('Invalid service user ID', { id });
-    return NextResponse.json(
-      { error: 'Invalid service user ID' },
-      { status: 400 },
-    );
+    log('Invalid service user ID', { serviceUserId });
+    return NextResponse.json({ error: 'Invalid service user ID' }, { status: 400 });
   }
 
   try {
@@ -35,11 +27,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     log('Admitting service user', { serviceUserId, wardId });
 
     if (!wardId || !Number.isInteger(wardId)) {
-      log('Invalid ward ID');
-      return NextResponse.json(
-        { error: 'Valid ward ID is required' },
-        { status: 400 },
-      );
+      log('Invalid ward ID', { wardId });
+      return NextResponse.json({ error: 'Valid ward ID is required' }, { status: 400 });
     }
 
     const admission = await prisma.admission.create({
@@ -48,32 +37,25 @@ export async function POST(req: NextRequest, { params }: Params) {
         wardId,
         admissionDate: new Date(),
         dischargeDate: null,
-        admittedById: creatorId,
+        admittedById: userId,
       },
       include: { ward: true, serviceUser: true },
     });
 
     log('Admission created successfully', { id: admission.id });
-    return NextResponse.json(
-      {
-        ...admission,
-        admissionDate: admission.admissionDate.toISOString(),
-        dischargeDate: null,
-      },
-      { status: 201 },
-    );
-  } catch (error: any) {
-    if (error.code === 'P2003') {
-      log('Invalid foreign key', { serviceUserId, wardId });
-      return NextResponse.json(
-        { error: 'Service user or ward not found' },
-        { status: 404 },
-      );
+    return NextResponse.json({
+      ...admission,
+      admissionDate: admission.admissionDate.toISOString(),
+      dischargeDate: null,
+    }, { status: 201 });
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      log('Invalid foreign key', { serviceUserId });
     }
-    log('Failed to create admission', error);
-    return NextResponse.json(
-      { error: 'Failed to create admission' },
-      { status: 500 },
-    );
+    log('Failed to create admission', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to create admission' }, { status: 500 });
   }
 }
+// src/app/api/service-users/[id]/admit/route.ts
