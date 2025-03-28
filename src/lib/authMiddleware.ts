@@ -1,6 +1,7 @@
 // src/lib/authMiddleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { prisma } from '@/lib/prisma';
 
 type UserProfile = {
   id: string;
@@ -20,14 +21,13 @@ export const authenticateRequest = async (
   requiredRoleName?: string,
   log: (message: string, data?: any) => void = () => {},
 ): Promise<AuthResult | NextResponse> => {
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    log('Unauthorized access attempt: Missing or invalid Authorization header');
-    return NextResponse.json({ error: 'Unauthorized: Missing or invalid token' }, { status: 401 });
+  const token = req.cookies.get('sb-access-token')?.value || req.headers.get('Authorization')?.split(' ')[1];
+  if (!token) {
+    log('Unauthorized access attempt: Missing token');
+    return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
   }
 
-  const token = authHeader.split(' ')[1];
-  log('Bearer token received:', { token: token.slice(0, 10) + '...' }); // Truncate for security
+  log('Token received:', { token: token.slice(0, 10) + '...' });
 
   const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
   if (userError || !user) {
@@ -35,15 +35,35 @@ export const authenticateRequest = async (
     return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
   }
 
-  const { data: userProfile, error: profileError } = await supabaseAdmin
+  let userProfile: UserProfile | null = null;
+  const { data: supabaseProfile, error: profileError } = await supabaseAdmin
     .from('users')
     .select('id, email, departmentId, roles (id, name, level)')
     .eq('id', user.id)
     .single();
 
-  if (profileError || !userProfile) {
-    log('Failed to fetch user profile:', profileError?.message);
-    return NextResponse.json({ error: 'Unauthorized: User profile not found' }, { status: 401 });
+  if (profileError || !supabaseProfile) {
+    log('Supabase profile fetch failed, falling back to Prisma', { error: profileError?.message });
+    const prismaProfile = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { role: true },
+    });
+
+    if (!prismaProfile) {
+      log('Failed to fetch user profile from Prisma');
+      return NextResponse.json({ error: 'Unauthorized: User profile not found' }, { status: 401 });
+    }
+
+    userProfile = {
+      id: prismaProfile.id,
+      email: prismaProfile.email,
+      departmentId: prismaProfile.departmentId,
+      roles: prismaProfile.role
+        ? [{ id: prismaProfile.role.id, name: prismaProfile.role.name, level: prismaProfile.role.level }]
+        : [],
+    };
+  } else {
+    userProfile = supabaseProfile;
   }
 
   const roles = userProfile.roles || [];
@@ -52,7 +72,7 @@ export const authenticateRequest = async (
     return NextResponse.json({ error: 'Forbidden: No roles assigned' }, { status: 403 });
   }
 
-  const userRole = roles[0]; // Assuming one role per user as per schema
+  const userRole = roles[0];
   if (requiredRoleLevel > 0 && userRole.level < requiredRoleLevel && userRole.name !== 'Super Admin') {
     log('Insufficient permissions: Role level too low', {
       requiredLevel: requiredRoleLevel,
