@@ -168,3 +168,5 @@ export const ActivityDragDrop: React.FC<ActivityDragDropProps> = ({
     </DndContext>
   );
 };
+
+// src/features/activities/components/ActivityDragDrop.tsx
