@@ -108,3 +108,4 @@ export default function ActivitiesPage() {
     </div>
   );
 }
+// src/app/(protected)/activities/page.tsx
