@@ -13,4 +13,4 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default Layout;
-// src/app/sessions/layout.tsx
+// src/app/(protected)/sessions/layout.tsx
