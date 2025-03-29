@@ -1,4 +1,5 @@
 // src/features/ServiceUsers/ui/SearchServiceUsers.tsx
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -31,9 +32,7 @@ const SearchServiceUsers: React.FC = () => {
 
   const [showOneToOneModal, setShowOneToOneModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
-  const [preselectedUserId, setPreselectedUserId] = useState<
-    number | undefined
-  >(undefined);
+  const [preselectedUserId, setPreselectedUserId] = useState<number | undefined>(undefined);
 
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
@@ -46,8 +45,8 @@ const SearchServiceUsers: React.FC = () => {
           apiClient.get<Admission[]>('/api/admissions/active'),
           apiClient.get<ActivityLog[]>('/api/activities/active'),
         ]);
-        setAdmissions(admRes || []);
-        setActivities(actRes || []);
+        setAdmissions(admRes);
+        setActivities(actRes);
       } catch (error) {
         console.error('Failed to load admissions or activities:', error);
       }
@@ -70,7 +69,7 @@ const SearchServiceUsers: React.FC = () => {
     includeDischarged,
   });
 
-  const handleCreateOneToOneClick = (userId: number) => {
+  const handleCreateOneToOneClick = (userId?: number) => {
     setPreselectedUserId(userId);
     setShowOneToOneModal(true);
   };
@@ -133,7 +132,7 @@ const SearchServiceUsers: React.FC = () => {
           </div>
           <div className="mt-6 flex gap-4">
             <button
-              onClick={handleCreateOneToOneClick}
+              onClick={() => handleCreateOneToOneClick()}
               className="btn bg-teal-500 hover:bg-teal-600 text-white transform hover:scale-105 transition-all duration-300 rounded-lg px-6 py-2"
             >
               Create One-to-One Session
@@ -233,8 +232,6 @@ const SearchServiceUsers: React.FC = () => {
         isOpen={showOneToOneModal}
         onClose={() => setShowOneToOneModal(false)}
         preselectedUserId={preselectedUserId}
-        admissions={admissions}
-        activities={activities}
         onSessionCreated={() => {
           setShowOneToOneModal(false);
           queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
@@ -243,8 +240,6 @@ const SearchServiceUsers: React.FC = () => {
       <GroupSessionModal
         isOpen={showGroupModal}
         onClose={() => setShowGroupModal(false)}
-        admissions={admissions}
-        activities={activities}
         onSessionCreated={() => {
           setShowGroupModal(false);
           queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
