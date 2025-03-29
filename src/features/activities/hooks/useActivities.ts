@@ -1,5 +1,4 @@
 // src/features/activities/hooks/useActivities.ts
-
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -22,18 +21,15 @@ const fetchActivities = async (
     pageSize: pageSize.toString(),
   };
 
-  // For users with role.level < 3, filter by their department
   if (userRoleLevel !== undefined && userRoleLevel < 3 && userDepartmentId) {
     params.departmentId = userDepartmentId.toString();
   } else if (departmentId) {
-    // For users with role.level >= 4, allow filtering by selected department
     params.departmentId = departmentId.toString();
   }
 
-  // apiClient.get returns the data directly due to the response interceptor
   const response: FetchActivitiesResponse = await apiClient.get(
     '/api/activities',
-    { params }
+    { params },
   );
   return {
     activities: response.activities.map((activity: Activity) => ({
@@ -48,19 +44,23 @@ const fetchActivities = async (
 };
 
 const fetchActiveActivities = async (): Promise<Activity[]> => {
-  // apiClient.get returns the data directly (Activity[])
   const response: Activity[] = await apiClient.get('/api/activities/active');
-  return response.map((activity: Activity) => ({
-    ...activity,
-    createdAt: new Date(activity.createdAt).toISOString(),
-    updatedAt: activity.updatedAt
-      ? new Date(activity.updatedAt).toISOString()
-      : null,
-  }));
+  return response.map((activity: Activity) => {
+    const createdAtDate = new Date(activity.createdAt);
+    const updatedAtDate = activity.updatedAt ? new Date(activity.updatedAt) : null;
+    return {
+      ...activity,
+      createdAt: Number.isNaN(createdAtDate.getTime())
+        ? new Date().toISOString() // Fallback to current date if invalid
+        : createdAtDate.toISOString(),
+      updatedAt: updatedAtDate && !Number.isNaN(updatedAtDate.getTime())
+        ? updatedAtDate.toISOString()
+        : null,
+    };
+  });
 };
 
 const fetchDepartments = async (): Promise<Department[]> => {
-  // apiClient.get returns the data directly (Department[])
   const response: Department[] = await apiClient.get('/api/departments');
   return response;
 };
@@ -105,7 +105,7 @@ export const useActivities = (selectedDepartmentId?: number) => {
   const departmentsQuery = useQuery({
     queryKey: ['departments'],
     queryFn: fetchDepartments,
-    enabled: userRoleLevel >= 4, // Only fetch departments for users with role.level >= 4
+    enabled: userRoleLevel >= 4,
   });
 
   return {
@@ -120,3 +120,4 @@ export const useActivities = (selectedDepartmentId?: number) => {
     isLoadingDepartments: departmentsQuery.isLoading,
   };
 };
+// src/features/activities/hooks/useActivities.ts
