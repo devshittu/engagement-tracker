@@ -7,30 +7,29 @@ import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import GroupSessionModal from './GroupSessionModal';
 import { apiClient } from '@/lib/api-client';
+import { useActiveAdmissions } from '@/features/admissions/hooks/useActiveAdmissions';
+import { useActiveActivities } from '@/features/activities/hooks/useActiveActivities';
 
 type GroupSessionCardProps = {
   groupRef: string;
   groupDescription: string;
   sessions: any[];
-  admissions: any[];
-  activities: any[];
 };
 
 const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
   groupRef,
   groupDescription,
   sessions,
-  admissions,
-  activities,
 }) => {
   const queryClient = useQueryClient();
   const [showAddUsersModal, setShowAddUsersModal] = useState(false);
 
+  const { data: activeAdmissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
+  const { data: activeActivities = [], isLoading: isActivitiesLoading } = useActiveActivities();
+
   const endGroupSessionMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post(
-        `/api/sessions/group/${groupRef}/end`,
-      );
+      const response = await apiClient.post(`/api/sessions/group/${groupRef}/end`);
       return response;
     },
     onSuccess: () => {
@@ -44,10 +43,9 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 
   const declineSessionMutation = useMutation({
     mutationFn: async (admissionId: number) => {
-      const response = await apiClient.post(
-        `/api/sessions/group/${groupRef}/remove`,
-        { admissionId },
-      );
+      const response = await apiClient.post(`/api/sessions/group/${groupRef}/remove`, {
+        admissionId,
+      });
       return response;
     },
     onSuccess: () => {
@@ -61,10 +59,9 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 
   const endUserSessionMutation = useMutation({
     mutationFn: async (admissionId: number) => {
-      const response = await apiClient.post(
-        `/api/sessions/group/${groupRef}/end-user`,
-        { admissionId },
-      );
+      const response = await apiClient.post(`/api/sessions/group/${groupRef}/end-user`, {
+        admissionId,
+      });
       return response;
     },
     onSuccess: () => {
@@ -78,6 +75,10 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 
   const session = sessions[0]; // Use the first session for group metadata
 
+  if (isAdmissionsLoading || isActivitiesLoading) {
+    return <div>Loading admissions and activities...</div>;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -90,7 +91,8 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
           {groupDescription || `Group ${groupRef}`}
         </h2>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong>Activity:</strong> {session.activityLog.activity.name}
+          <strong>Activity:</strong>{' '}
+          {session?.activityLog?.activity?.name ?? 'N/A'}
         </p>
         <div className="flex flex-wrap gap-2 mt-2">
           {sessions.map((s) =>
@@ -102,7 +104,7 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
                 <span>
                   {s.admission.serviceUser.name}
                   <span className="ml-1 text-xs">
-                    (Ward: {s.admission.ward.name})
+                    (Ward: {s.admission?.ward?.name})
                   </span>
                 </span>
                 <button
@@ -141,8 +143,8 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
       <GroupSessionModal
         isOpen={showAddUsersModal}
         onClose={() => setShowAddUsersModal(false)}
-        admissions={admissions}
-        activities={activities}
+        admissions={activeAdmissions}
+        activities={activeActivities}
         onSessionCreated={() => {
           setShowAddUsersModal(false);
           queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
