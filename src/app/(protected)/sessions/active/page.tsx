@@ -3,3 +3,4 @@ import ActiveSessionsInfiniteClient from '@/features/Sessions/ui/ActiveSessionsI
 export default function ActiveSessionsPage() {
   return <ActiveSessionsInfiniteClient />;
 }
+// src/app/(protected)/sessions/active/page.tsx
