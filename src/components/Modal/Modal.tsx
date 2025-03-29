@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, ReactNode } from 'react';
+import FocusLock from 'react-focus-lock';
 import Transition from '../Transition/Transition';
 
 export interface ModalProps {
@@ -20,10 +21,8 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const modalContent = useRef<HTMLDivElement>(null);
 
-  // Close the modal when clicking outside of the modal content.
   useEffect(() => {
     const clickHandler = (event: MouseEvent) => {
-      // If modal is not shown, or if the click is inside the modal, do nothing.
       if (
         !show ||
         !modalContent.current ||
@@ -38,7 +37,6 @@ const Modal: React.FC<ModalProps> = ({
     return () => document.removeEventListener('click', clickHandler);
   }, [show, handleClose]);
 
-  // Close the modal if the Escape key is pressed.
   useEffect(() => {
     const keyHandler = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -51,7 +49,6 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <>
-      {/* Modal backdrop */}
       <Transition
         className="fixed inset-0 z-50 bg-white bg-opacity-75 transition-opacity blur"
         show={show}
@@ -66,7 +63,6 @@ const Modal: React.FC<ModalProps> = ({
         {''}
       </Transition>
 
-      {/* Modal dialog */}
       <Transition
         id={id}
         className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center transform px-4 sm:px-6"
@@ -81,12 +77,14 @@ const Modal: React.FC<ModalProps> = ({
         leaveStart="opacity-100 scale-100"
         leaveEnd="opacity-0 scale-95"
       >
-        <div
-          className="bg-white overflow-auto max-w-6xl w-full max-h-full"
-          ref={modalContent}
-        >
-          {children}
-        </div>
+        <FocusLock disabled={!show} returnFocus>
+          <div
+            className="bg-white overflow-auto max-w-6xl w-full max-h-full"
+            ref={modalContent}
+          >
+            {children}
+          </div>
+        </FocusLock>
       </Transition>
     </>
   );
