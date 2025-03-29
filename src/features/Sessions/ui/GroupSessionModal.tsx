@@ -6,18 +6,8 @@ import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'react-toastify';
 import { useDebounce } from '@/hooks/useDebounce';
-
-type Admission = {
-  id: number;
-  serviceUser: { id: number; name: string };
-};
-
-type ActivityLog = {
-  id: number;
-  name: string;
-  startDate: string;
-  duration?: number;
-};
+import { useActiveActivities } from '@/features/activities/hooks/useActiveActivities';
+import { useActiveAdmissions } from '@/features/admissions/hooks/useActiveAdmissions';
 
 type ServiceUserOption = {
   id: number;
@@ -29,8 +19,6 @@ type ServiceUserOption = {
 type GroupSessionModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  admissions: Admission[];
-  activities: ActivityLog[];
   onSessionCreated: () => void;
   existingSessionId?: number;
 };
@@ -38,13 +26,14 @@ type GroupSessionModalProps = {
 const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   isOpen,
   onClose,
-  admissions,
-  activities,
   onSessionCreated,
   existingSessionId,
 }) => {
+  const { data: activities = [], isLoading: isActivitiesLoading } = useActiveActivities();
+  const { data: admissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
+
   const [selectedActivityId, setSelectedActivityId] = useState<number | ''>(
-    existingSessionId ? activities[0]?.id : '',
+    existingSessionId && activities.length > 0 ? activities[0].id : '',
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedUsers, setSelectedUsers] = useState<ServiceUserOption[]>([]);
@@ -62,9 +51,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
             params: { q: debouncedSearchQuery, includeDischarged: 'false' },
           });
           const admittedUsers = response.serviceUsers
-            .filter((user: any) =>
-              user.admissions.some((adm: any) => !adm.dischargeDate),
-            )
+            .filter((user: any) => user.admissions.some((adm: any) => !adm.dischargeDate))
             .map((user: any) => ({
               id: user.id,
               name: user.name,
@@ -73,8 +60,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
             }));
           setUserOptions(
             admittedUsers.filter(
-              (u: ServiceUserOption) =>
-                !selectedUsers.some((su) => su.id === u.id),
+              (u: ServiceUserOption) => !selectedUsers.some((su) => su.id === u.id),
             ),
           );
         } catch (error) {
@@ -91,15 +77,13 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   const checkExistingSession = useCallback(async () => {
     if (existingSessionId) {
       try {
-        const response = await apiClient.get(
-          `/api/sessions/${existingSessionId}`,
-        );
+        const response = await apiClient.get(`/api/sessions/${existingSessionId}`);
         setExistingSession(response);
       } catch (error) {
         console.error('Failed to fetch existing session:', error);
         toast.error('Failed to check existing session. Please try again.');
       }
-    } else if (selectedActivityId && !existingSessionId) {
+    } else if (selectedActivityId) {
       try {
         const response = await apiClient.get('/api/group-sessions', {
           params: { type: 'GROUP', activityLogId: selectedActivityId },
@@ -165,12 +149,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         if (confirmAdd) {
           await Promise.all(
             admissionIds.map((admissionId) =>
-              apiClient.post(
-                `/api/sessions/group/${existingSession.groupRef}/join`,
-                {
-                  admissionId,
-                },
-              ),
+              apiClient.post(`/api/sessions/group/${existingSession.groupRef}/join`, {
+                admissionId,
+              }),
             ),
           );
           toast.success('Users added to existing group session successfully!');
@@ -180,12 +161,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
       } else if (existingSessionId) {
         await Promise.all(
           admissionIds.map((admissionId) =>
-            apiClient.post(
-              `/api/sessions/group/${existingSession.groupRef}/join`,
-              {
-                admissionId,
-              },
-            ),
+            apiClient.post(`/api/sessions/group/${existingSession.groupRef}/join`, {
+              admissionId,
+            }),
           ),
         );
         toast.success('Users added to group session successfully!');
@@ -195,11 +173,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           type: 'GROUP',
           activityLogId: Number(selectedActivityId),
           admissionIds,
-          duration: activity?.duration,
+          duration: activity?.duration, // Optional duration from ActivityContinuityLog
         };
-        console.log('Creating group session with payload:', payload);
         const response = await apiClient.post('/api/group-sessions', payload);
-        console.log('Group session creation response:', response);
         toast.success('Group session created successfully!');
       }
       onSessionCreated();
@@ -207,13 +183,16 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
     } catch (error: any) {
       console.error('Failed to start group session:', error);
       toast.error(
-        error.response?.data?.error ||
-          'Failed to start group session. Please try again.',
+        error.response?.data?.error || 'Failed to start group session. Please try again.',
       );
     } finally {
       setLoading(false);
     }
   };
+
+  if (isActivitiesLoading || isAdmissionsLoading) {
+    return <div>Loading activities and admissions...</div>;
+  }
 
   return (
     <Modal show={isOpen} handleClose={onClose} ariaLabel="Create Group Session">
@@ -226,9 +205,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
       >
         <div className="flex justify-between items-center bg-green-500 text-white p-4 rounded-t-xl">
           <h3 className="text-xl font-bold">
-            {existingSessionId
-              ? 'Add Users to Group Session'
-              : 'Start a Group Session'}
+            {existingSessionId ? 'Add Users to Group Session' : 'Start a Group Session'}
           </h3>
           <button
             onClick={onClose}
@@ -269,8 +246,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 <option value="">Choose an Activity</option>
                 {activities.map((activity) => (
                   <option key={activity.id} value={activity.id}>
-                    {activity.name} (Duration: {activity.duration || 'N/A'}{' '}
-                    mins)
+                    {activity.name}
                   </option>
                 ))}
               </select>
@@ -295,6 +271,13 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                     <li
                       key={user.id}
                       onClick={() => handleAddUser(user)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleAddUser(user);
+                        }
+                      }}
+                      tabIndex={0}
                       className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center"
                     >
                       <span className="font-medium">{user.name}</span>
@@ -352,3 +335,4 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
 };
 
 export default GroupSessionModal;
+// src/features/Sessions/ui/GroupSessionModal.tsx
