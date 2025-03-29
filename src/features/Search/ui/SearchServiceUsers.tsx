@@ -169,3 +169,4 @@ const SearchServiceUsers: React.FC = () => {
 };
 
 export default SearchServiceUsers;
+// src/features/Search/ui/SearchServiceUsers.tsx
