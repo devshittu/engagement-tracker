@@ -17,3 +17,4 @@ export const Loading = () => {
     </div>
   );
 };
+// src/components/loading/loading.tsx
