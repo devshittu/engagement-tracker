@@ -10,8 +10,10 @@ import {
   useActiveSessions,
   useActiveSessionsCounts,
 } from '../hooks/useActiveSessions';
+import { useDeclineSession } from '../hooks/useDeclineSession';
 import ElapsedTime from './ElapsedTime';
 import GroupSessionCard from './GroupSessionCard';
+import DeclineSessionModal from './DeclineSessionModal';
 import Modal from '@/components/Modal/Modal';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
@@ -20,8 +22,16 @@ const ActiveSessionsDashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showEndAllOneToOneModal, setShowEndAllOneToOneModal] = useState(false);
   const [showEndAllGroupModal, setShowEndAllGroupModal] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [decliningSession, setDecliningSession] = useState<{
+    id: number;
+    serviceUserName: string;
+    activityName: string;
+  } | null>(null);
+
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
 
   const {
     oneToOneCount,
@@ -69,9 +79,7 @@ const ActiveSessionsDashboard: React.FC = () => {
 
   const endSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      const response = await apiClient.post(`/api/sessions/${sessionId}/end`, {
-        id: sessionId,
-      });
+      const response = await apiClient.post(`/api/sessions/${sessionId}/end`, { id: sessionId });
       return response;
     },
     onSuccess: () => {
@@ -113,6 +121,22 @@ const ActiveSessionsDashboard: React.FC = () => {
     },
   });
 
+  const handleDeclineClick = useCallback((session: any) => {
+    setDecliningSession({
+      id: session.id,
+      serviceUserName: session.admission.serviceUser.name,
+      activityName: session.activityLog.activity.name,
+    });
+    setShowDeclineModal(true);
+  }, []);
+
+  const handleDeclineSubmit = useCallback(
+    (sessionId: number, declineReasonId: number, description: string | null) => {
+      declineSession({ sessionId, declineReasonId, description });
+    },
+    [declineSession],
+  );
+
   const renderOneToOneSession = useCallback(
     (session: any) => (
       <motion.div
@@ -143,23 +167,31 @@ const ActiveSessionsDashboard: React.FC = () => {
               big
             />
           </div>
-          <div className="card-actions justify-end">
+          <div className="card-actions justify-between space-x-2">
             {!session.timeOut && (
-              <button
-                onClick={() => endSessionMutation.mutate(session.id)}
-                className="btn bg-red-500 hover:bg-red-600 text-white"
-              >
-                End Session
-              </button>
+              <>
+                <button
+                  onClick={() => handleDeclineClick(session)}
+                  className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => endSessionMutation.mutate(session.id)}
+                  className="btn bg-red-500 hover:bg-red-600 text-white"
+                >
+                  End Session
+                </button>
+              </>
             )}
           </div>
         </div>
       </motion.div>
     ),
-    [endSessionMutation],
+    [endSessionMutation, handleDeclineClick],
   );
 
-  if (isOneToOneLoading || isGroupLoading || isCountsLoading) {
+  if (isOneToOneLoading || isGroupLoading || isCountsLoading || isLoadingReasons) {
     return (
       <div className="text-center text-gray-500 dark:text-gray-400">
         <span className="loading loading-spinner loading-lg"></span> Loading
@@ -229,6 +261,12 @@ const ActiveSessionsDashboard: React.FC = () => {
           >
             End All Group ({groupCount})
           </button>
+          <Link
+            href="/sessions/declined"
+            className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
+          >
+            View Declined
+          </Link>
           {totalActive > 6 && (
             <Link
               href="/sessions/active"
@@ -247,8 +285,8 @@ const ActiveSessionsDashboard: React.FC = () => {
             groupRef={group.groupRef}
             groupDescription={group.groupDescription}
             sessions={group.sessions}
-            admissions={[]} // Placeholder; fixed in Chunk 2
-            activities={[]} // Placeholder; fixed in Chunk 2
+            admissions={[]} // Placeholder; requires backend update
+            activities={[]} // Placeholder; requires backend update
           />
         ))}
         {sessionsToDisplay.map(renderOneToOneSession)}
@@ -353,6 +391,18 @@ const ActiveSessionsDashboard: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {decliningSession && (
+        <DeclineSessionModal
+          show={showDeclineModal}
+          sessionId={decliningSession.id}
+          serviceUserName={decliningSession.serviceUserName}
+          activityName={decliningSession.activityName}
+          declineReasons={declineReasons}
+          onDecline={handleDeclineSubmit}
+          onClose={() => setShowDeclineModal(false)}
+        />
+      )}
     </div>
   );
 };
