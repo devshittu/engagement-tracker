@@ -1,9 +1,11 @@
 // src/features/Sessions/ui/DeclineSessionModal.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Modal from '@/components/Modal/Modal';
 import { DeclineReason } from '../types';
+import { motion } from 'framer-motion';
+import { logger } from '@/lib/logger';
 
 type DeclineSessionModalProps = {
   show: boolean;
@@ -24,91 +26,95 @@ const DeclineSessionModal: React.FC<DeclineSessionModalProps> = ({
   onDecline,
   onClose,
 }) => {
-  const [selectedReasonId, setSelectedReasonId] = useState<number | null>(null);
-  const [description, setDescription] = useState<string>('');
+  const [selectedReasonId, setSelectedReasonId] = React.useState<number | null>(null);
+  const [description, setDescription] = React.useState<string>('');
 
   const handleSubmit = () => {
-    if (!selectedReasonId) return;
+    if (!selectedReasonId) {
+      logger.warn('Decline submit attempted without reason', { sessionId });
+      return;
+    }
+    logger.info('Decline modal submitted', { sessionId, selectedReasonId, description });
     onDecline(sessionId, selectedReasonId, description.trim() || null);
     setSelectedReasonId(null);
     setDescription('');
-    onClose();
   };
+
+  logger.debug('Rendering DeclineSessionModal', { sessionId, show });
 
   return (
     <Modal show={show} handleClose={onClose} ariaLabel="Decline Session Confirmation">
-      <div className="p-6 text-center">
-        <div className="mb-4">
-          <svg
-            className="w-12 h-12 mx-auto text-yellow-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-          Decline Session
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Why is <strong>{serviceUserName}</strong> declining the session{' '}
-          <strong>{activityName}</strong>?
-        </p>
-        <div className="mb-4">
-          <label htmlFor="declineReason" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-            Reason
-          </label>
-          <select
-            id="declineReason"
-            value={selectedReasonId || ''}
-            onChange={(e) => setSelectedReasonId(parseInt(e.target.value, 10))}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-          >
-            <option value="">Select a reason</option>
-            {declineReasons.map((reason) => (
-              <option key={reason.id} value={reason.id}>
-                {reason.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-4">
-          <label htmlFor="description" className="block text-left text-sm font-medium text-gray-700 dark:text-gray-300">
-            Description (optional)
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
-            placeholder="Add any additional details..."
-          />
-        </div>
-        <div className="flex justify-center gap-4">
-          <button
-            onClick={onClose}
-            className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-200"
-          >
-            Cancel
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full overflow-hidden"
+      >
+        <div className="bg-yellow-500 dark:bg-yellow-600 p-4 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white">Decline Session</h3>
+          <button onClick={onClose} className="text-white hover:text-gray-200 focus:outline-none">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
+        </div>
+        <div className="p-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-4 text-center">
+            Why is <strong className="text-gray-900 dark:text-gray-100">{serviceUserName}</strong> declining the session{' '}
+            <strong className="text-gray-900 dark:text-gray-100">{activityName}</strong>?
+          </p>
+          <div className="form-control mb-4">
+            <label htmlFor="declineReason" className="label">
+              <span className="label-text font-medium text-gray-700 dark:text-gray-300">Reason</span>
+            </label>
+            <select
+              id="declineReason"
+              value={selectedReasonId || ''}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                logger.debug('Decline reason selected', { sessionId, reasonId: value });
+                setSelectedReasonId(value);
+              }}
+              className="select select-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-yellow-500 focus:border-yellow-500"
+            >
+              <option value="">Select a reason</option>
+              {declineReasons.map((reason) => (
+                <option key={reason.id} value={reason.id}>{reason.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-control mb-4">
+            <label htmlFor="description" className="label">
+              <span className="label-text font-medium text-gray-700 dark:text-gray-300">Description (optional)</span>
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => {
+                logger.debug('Decline description updated', { sessionId, description: e.target.value });
+                setDescription(e.target.value);
+              }}
+              rows={3}
+              className="textarea textarea-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-yellow-500 focus:border-yellow-500"
+              placeholder="Add any additional details..."
+            />
+          </div>
+        </div>
+        <div className="p-4 bg-gray-50 dark:bg-gray-900 flex justify-end gap-4">
+          <button onClick={onClose} className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-200 rounded-lg">Cancel</button>
           <button
             onClick={handleSubmit}
             disabled={!selectedReasonId}
-            className={`btn bg-yellow-500 hover:bg-yellow-600 text-white ${!selectedReasonId ? 'btn-disabled' : ''}`}
+            className={`btn bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg ${!selectedReasonId ? 'btn-disabled' : ''}`}
           >
             Decline
           </button>
         </div>
-      </div>
+      </motion.div>
     </Modal>
   );
 };
 
 export default DeclineSessionModal;
+// src/features/Sessions/ui/DeclineSessionModal.tsx
