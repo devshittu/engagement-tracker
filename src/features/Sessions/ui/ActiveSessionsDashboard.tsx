@@ -1,7 +1,7 @@
 // src/features/Sessions/ui/ActiveSessionsDashboard.tsx
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
@@ -17,21 +17,18 @@ import DeclineSessionModal from './DeclineSessionModal';
 import Modal from '@/components/Modal/Modal';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
+import { logger } from '@/lib/logger';
+import { useSessionStore } from '@/stores/sessionStore';
 
 const ActiveSessionsDashboard: React.FC = () => {
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [showEndAllOneToOneModal, setShowEndAllOneToOneModal] = useState(false);
-  const [showEndAllGroupModal, setShowEndAllGroupModal] = useState(false);
-  const [showDeclineModal, setShowDeclineModal] = useState(false);
-  const [decliningSession, setDecliningSession] = useState<{
-    id: number;
-    serviceUserName: string;
-    activityName: string;
-  } | null>(null);
+  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
+  const [showEndAllOneToOneModal, setShowEndAllOneToOneModal] = React.useState(false);
+  const [showEndAllGroupModal, setShowEndAllGroupModal] = React.useState(false);
 
   const queryClient = useQueryClient();
   const router = useRouter();
   const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
+  const { decliningSession, setDecliningSession, clearDecliningSession } = useSessionStore();
 
   const {
     oneToOneCount,
@@ -74,68 +71,90 @@ const ActiveSessionsDashboard: React.FC = () => {
   );
 
   const toggleSortOrder = useCallback(() => {
+    logger.info('Toggling sort order', { previous: sortOrder, new: sortOrder === 'asc' ? 'desc' : 'asc' });
     setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-  }, []);
+  }, [sortOrder]);
 
   const endSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
+      logger.info('Ending session', { sessionId });
       const response = await apiClient.post(`/api/sessions/${sessionId}/end`, { id: sessionId });
       return response;
     },
     onSuccess: () => {
+      logger.info('Session ended successfully', { sessionId: endSessionMutation.variables });
       toast.success('Session ended successfully!');
-      queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['activeSessions', { type: 'ONE_TO_ONE' }] });
     },
     onError: (err: any) => {
+      logger.error('Failed to end session', { sessionId: endSessionMutation.variables, error: err.message });
       toast.error(err.message || 'Failed to end session');
     },
   });
 
   const endAllOneToOneMutation = useMutation({
     mutationFn: async () => {
+      logger.info('Ending all one-to-one sessions', { count: oneToOneCount });
       const response = await apiClient.post('/api/sessions/end-all/one-to-one');
       return response;
     },
     onSuccess: () => {
+      logger.info('All one-to-one sessions ended successfully', { count: oneToOneCount });
       toast.success('All one-to-one sessions ended successfully!');
-      queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['activeSessions', { type: 'ONE_TO_ONE' }] });
       setShowEndAllOneToOneModal(false);
     },
     onError: (err: any) => {
+      logger.error('Failed to end all one-to-one sessions', { error: err.message });
       toast.error(err.message || 'Failed to end all one-to-one sessions');
     },
   });
 
   const endAllGroupMutation = useMutation({
     mutationFn: async () => {
+      logger.info('Ending all group sessions', { count: groupCount });
       const response = await apiClient.post('/api/sessions/end-all/group');
       return response;
     },
     onSuccess: () => {
+      logger.info('All group sessions ended successfully', { count: groupCount });
       toast.success('All group sessions ended successfully!');
-      queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['activeSessions', { type: 'GROUP' }] });
       setShowEndAllGroupModal(false);
     },
     onError: (err: any) => {
+      logger.error('Failed to end all group sessions', { error: err.message });
       toast.error(err.message || 'Failed to end all group sessions');
     },
   });
 
   const handleDeclineClick = useCallback((session: any) => {
-    setDecliningSession({
+    const decliningData = {
       id: session.id,
       serviceUserName: session.admission.serviceUser.name,
       activityName: session.activityLog.activity.name,
-    });
-    setShowDeclineModal(true);
-  }, []);
+    };
+    logger.info('Decline button clicked', decliningData);
+    setDecliningSession(decliningData);
+  }, [setDecliningSession]);
 
   const handleDeclineSubmit = useCallback(
     (sessionId: number, declineReasonId: number, description: string | null) => {
+      logger.info('Submitting decline', { sessionId, declineReasonId, description });
       declineSession({ sessionId, declineReasonId, description });
+      clearDecliningSession();
     },
-    [declineSession],
+    [declineSession, clearDecliningSession],
   );
+
+  const handleCloseModal = useCallback(() => {
+    logger.info('Closing decline modal', { sessionId: decliningSession?.id });
+    clearDecliningSession();
+  }, [clearDecliningSession, decliningSession]);
+
+  useEffect(() => {
+    logger.debug('ActiveSessionsDashboard rendered', { totalActive, decliningSession });
+  }, [totalActive, decliningSession]);
 
   const renderOneToOneSession = useCallback(
     (session: any) => (
@@ -192,6 +211,7 @@ const ActiveSessionsDashboard: React.FC = () => {
   );
 
   if (isOneToOneLoading || isGroupLoading || isCountsLoading || isLoadingReasons) {
+    logger.debug('Loading state detected', { isOneToOneLoading, isGroupLoading, isCountsLoading, isLoadingReasons });
     return (
       <div className="text-center text-gray-500 dark:text-gray-400">
         <span className="loading loading-spinner loading-lg"></span> Loading
@@ -201,6 +221,7 @@ const ActiveSessionsDashboard: React.FC = () => {
   }
 
   if (countsError || oneToOneError || groupError) {
+    logger.error('Error loading sessions', { countsError: countsError?.message, oneToOneError: oneToOneError?.message, groupError: groupError?.message });
     return (
       <p className="text-center text-red-500">
         Error loading sessions:{' '}
@@ -210,6 +231,7 @@ const ActiveSessionsDashboard: React.FC = () => {
   }
 
   if (totalActive === 0) {
+    logger.info('No active sessions', { totalActive });
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -231,6 +253,8 @@ const ActiveSessionsDashboard: React.FC = () => {
     );
   }
 
+  logger.debug('Rendering active sessions', { oneToOneCount, groupCount });
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6">
@@ -248,14 +272,20 @@ const ActiveSessionsDashboard: React.FC = () => {
             {sortOrder === 'asc' ? 'Earliest First' : 'Latest First'}
           </button>
           <button
-            onClick={() => setShowEndAllOneToOneModal(true)}
+            onClick={() => {
+              logger.info('Opening end all one-to-one modal', { count: oneToOneCount });
+              setShowEndAllOneToOneModal(true);
+            }}
             className={`btn bg-red-500 hover:bg-red-600 text-white ${oneToOneCount === 0 ? 'btn-disabled' : ''}`}
             disabled={oneToOneCount === 0}
           >
             End All One-to-One ({oneToOneCount})
           </button>
           <button
-            onClick={() => setShowEndAllGroupModal(true)}
+            onClick={() => {
+              logger.info('Opening end all group modal', { count: groupCount });
+              setShowEndAllGroupModal(true);
+            }}
             className={`btn bg-red-600 hover:bg-red-700 text-white ${groupCount === 0 ? 'btn-disabled' : ''}`}
             disabled={groupCount === 0}
           >
@@ -285,8 +315,6 @@ const ActiveSessionsDashboard: React.FC = () => {
             groupRef={group.groupRef}
             groupDescription={group.groupDescription}
             sessions={group.sessions}
-            admissions={[]} // Placeholder; requires backend update
-            activities={[]} // Placeholder; requires backend update
           />
         ))}
         {sessionsToDisplay.map(renderOneToOneSession)}
@@ -294,10 +322,13 @@ const ActiveSessionsDashboard: React.FC = () => {
 
       <Modal
         show={showEndAllOneToOneModal}
-        handleClose={() => setShowEndAllOneToOneModal(false)}
+        handleClose={() => {
+          logger.info('Closing end all one-to-one modal');
+          setShowEndAllOneToOneModal(false);
+        }}
         ariaLabel="Confirm End All One-to-One Sessions"
       >
-        <div className="p-4 text-center">
+        <div className="p-6 text-center bg-white dark:bg-gray-800 rounded-lg shadow-xl">
           <div className="mb-4">
             <svg
               className="w-12 h-12 mx-auto text-red-500"
@@ -317,19 +348,18 @@ const ActiveSessionsDashboard: React.FC = () => {
             End All One-to-One Sessions
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Are you sure you want to end all {oneToOneCount} active one-to-one
-            sessions? This action cannot be undone.
+            Are you sure you want to end all {oneToOneCount} active one-to-one sessions? This action cannot be undone.
           </p>
           <div className="flex justify-center gap-4">
             <button
               onClick={() => setShowEndAllOneToOneModal(false)}
-              className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-200"
+              className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-200 rounded-lg"
             >
               Cancel
             </button>
             <button
               onClick={() => endAllOneToOneMutation.mutate()}
-              className={`btn bg-red-500 hover:bg-red-600 text-white ${endAllOneToOneMutation.isPending ? 'btn-disabled' : ''}`}
+              className={`btn bg-red-500 hover:bg-red-600 text-white rounded-lg ${endAllOneToOneMutation.isPending ? 'btn-disabled' : ''}`}
               disabled={endAllOneToOneMutation.isPending}
             >
               {endAllOneToOneMutation.isPending ? (
@@ -344,10 +374,13 @@ const ActiveSessionsDashboard: React.FC = () => {
 
       <Modal
         show={showEndAllGroupModal}
-        handleClose={() => setShowEndAllGroupModal(false)}
+        handleClose={() => {
+          logger.info('Closing end all group modal');
+          setShowEndAllGroupModal(false);
+        }}
         ariaLabel="Confirm End All Group Sessions"
       >
-        <div className="p-4 text-center">
+        <div className="p-6 text-center bg-white dark:bg-gray-800 rounded-lg shadow-xl">
           <div className="mb-4">
             <svg
               className="w-12 h-12 mx-auto text-red-500"
@@ -367,19 +400,18 @@ const ActiveSessionsDashboard: React.FC = () => {
             End All Group Sessions
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Are you sure you want to end all {groupCount} active group sessions?
-            This action cannot be undone.
+            Are you sure you want to end all {groupCount} active group sessions? This action cannot be undone.
           </p>
           <div className="flex justify-center gap-4">
             <button
               onClick={() => setShowEndAllGroupModal(false)}
-              className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-200"
+              className="btn bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700 dark:text-gray-200 rounded-lg"
             >
               Cancel
             </button>
             <button
               onClick={() => endAllGroupMutation.mutate()}
-              className={`btn bg-red-500 hover:bg-red-600 text-white ${endAllGroupMutation.isPending ? 'btn-disabled' : ''}`}
+              className={`btn bg-red-500 hover:bg-red-600 text-white rounded-lg ${endAllGroupMutation.isPending ? 'btn-disabled' : ''}`}
               disabled={endAllGroupMutation.isPending}
             >
               {endAllGroupMutation.isPending ? (
@@ -394,13 +426,13 @@ const ActiveSessionsDashboard: React.FC = () => {
 
       {decliningSession && (
         <DeclineSessionModal
-          show={showDeclineModal}
+          show={!!decliningSession}
           sessionId={decliningSession.id}
           serviceUserName={decliningSession.serviceUserName}
           activityName={decliningSession.activityName}
           declineReasons={declineReasons}
           onDecline={handleDeclineSubmit}
-          onClose={() => setShowDeclineModal(false)}
+          onClose={handleCloseModal}
         />
       )}
     </div>
