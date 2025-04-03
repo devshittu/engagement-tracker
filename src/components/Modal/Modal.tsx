@@ -1,8 +1,10 @@
+// src/components/Modal/Modal.tsx
 'use client';
 
 import React, { useEffect, useRef, ReactNode } from 'react';
 import FocusLock from 'react-focus-lock';
 import Transition from '../Transition/Transition';
+import { logger } from '@/lib/logger';
 
 export interface ModalProps {
   children: ReactNode;
@@ -30,22 +32,26 @@ const Modal: React.FC<ModalProps> = ({
       ) {
         return;
       }
+      logger.info('Modal closed via outside click', { id, ariaLabel });
       handleClose();
     };
 
     document.addEventListener('click', clickHandler);
     return () => document.removeEventListener('click', clickHandler);
-  }, [show, handleClose]);
+  }, [show, handleClose, id, ariaLabel]);
 
   useEffect(() => {
     const keyHandler = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      logger.info('Modal closed via Escape key', { id, ariaLabel });
       handleClose();
     };
 
     document.addEventListener('keydown', keyHandler);
     return () => document.removeEventListener('keydown', keyHandler);
-  }, [handleClose]);
+  }, [handleClose, id, ariaLabel]);
+
+  logger.debug('Rendering Modal', { id, show, ariaLabel });
 
   return (
     <>
