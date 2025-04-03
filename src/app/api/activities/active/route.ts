@@ -95,7 +95,8 @@ export async function GET(req: NextRequest) {
     });
 
     const serialized = activeActivityLogs.map((log) => ({
-      id: log.activity.id, // Return activity ID, not log ID
+      id: log.id, // Return activity log ID
+      activityId: log.activity.id, // Return activity ID, not log ID
       name: log.activity.name,
       description: log.activity.description || null,
       departmentId: log.activity.departmentId || null,
