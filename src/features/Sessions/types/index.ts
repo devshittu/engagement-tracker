@@ -56,3 +56,4 @@ export type Session = {
   updatedAt: string | null; // ISO string or null
   declinedSession?: DeclinedSession | null;
 };
+// src/features/Sessions/types/index.ts
