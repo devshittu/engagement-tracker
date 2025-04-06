@@ -1,7 +1,8 @@
 // src/features/Sessions/ui/DeclineSessionModal.tsx
+
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Modal from '@/components/Modal/Modal';
 import { DeclineReason } from '../types';
 import { motion } from 'framer-motion';
@@ -29,6 +30,10 @@ const DeclineSessionModal: React.FC<DeclineSessionModalProps> = ({
   const [selectedReasonId, setSelectedReasonId] = React.useState<number | null>(null);
   const [description, setDescription] = React.useState<string>('');
 
+  useEffect(() => {
+    logger.debug('DeclineSessionModal rendered', { sessionId, show, hasReasons: declineReasons.length });
+  }, [sessionId, show, declineReasons]);
+
   const handleSubmit = () => {
     if (!selectedReasonId) {
       logger.warn('Decline submit attempted without reason', { sessionId });
@@ -39,8 +44,6 @@ const DeclineSessionModal: React.FC<DeclineSessionModalProps> = ({
     setSelectedReasonId(null);
     setDescription('');
   };
-
-  logger.debug('Rendering DeclineSessionModal', { sessionId, show });
 
   return (
     <Modal show={show} handleClose={onClose} ariaLabel="Decline Session Confirmation">
