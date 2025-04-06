@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useEffect, useRef, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import Transition from '../Transition/Transition';
 import { logger } from '@/lib/logger';
@@ -22,6 +23,22 @@ const Modal: React.FC<ModalProps> = ({
   handleClose,
 }) => {
   const modalContent = useRef<HTMLDivElement>(null);
+  const lastOpenTime = useRef<number>(0);
+  const portalRoot = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    portalRoot.current = document.getElementById('modal-root') || document.body;
+    if (!portalRoot.current) {
+      logger.error('Portal root not found', { id, ariaLabel });
+    }
+    if (show) {
+      lastOpenTime.current = Date.now();
+      logger.debug('Modal mounted', { id, ariaLabel, show });
+    }
+    return () => {
+      logger.debug('Modal unmounted', { id, ariaLabel });
+    };
+  }, [show, id, ariaLabel]);
 
   useEffect(() => {
     const clickHandler = (event: MouseEvent) => {
@@ -32,12 +49,22 @@ const Modal: React.FC<ModalProps> = ({
       ) {
         return;
       }
-      logger.info('Modal closed via outside click', { id, ariaLabel });
+      const timeSinceOpen = Date.now() - lastOpenTime.current;
+      if (timeSinceOpen < 300) {
+        logger.debug('Ignoring early outside click', { id, ariaLabel, timeSinceOpen });
+        return;
+      }
+      logger.info('Modal closed via outside click', {
+        id,
+        ariaLabel,
+        x: event.clientX,
+        y: event.clientY,
+      });
       handleClose();
     };
 
-    document.addEventListener('click', clickHandler);
-    return () => document.removeEventListener('click', clickHandler);
+    document.addEventListener('click', clickHandler, { capture: true });
+    return () => document.removeEventListener('click', clickHandler, { capture: true });
   }, [show, handleClose, id, ariaLabel]);
 
   useEffect(() => {
@@ -51,9 +78,12 @@ const Modal: React.FC<ModalProps> = ({
     return () => document.removeEventListener('keydown', keyHandler);
   }, [handleClose, id, ariaLabel]);
 
-  logger.debug('Rendering Modal', { id, show, ariaLabel });
+  if (!portalRoot.current) {
+    logger.error('Cannot render modal, portal root is null', { id, ariaLabel });
+    return null;
+  }
 
-  return (
+  return createPortal(
     <>
       <Transition
         className="fixed inset-0 z-50 bg-white bg-opacity-75 transition-opacity blur"
@@ -92,9 +122,11 @@ const Modal: React.FC<ModalProps> = ({
           </div>
         </FocusLock>
       </Transition>
-    </>
+    </>,
+    portalRoot.current
   );
 };
 
 export default Modal;
+
 // src/components/Modal/Modal.tsx
