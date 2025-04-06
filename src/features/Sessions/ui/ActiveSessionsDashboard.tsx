@@ -1,4 +1,5 @@
 // src/features/Sessions/ui/ActiveSessionsDashboard.tsx
+
 'use client';
 
 import React, { useCallback, useMemo, useEffect } from 'react';
@@ -18,17 +19,24 @@ import Modal from '@/components/Modal/Modal';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { logger } from '@/lib/logger';
-import { useSessionStore } from '@/stores/sessionStore';
 
 const ActiveSessionsDashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
   const [showEndAllOneToOneModal, setShowEndAllOneToOneModal] = React.useState(false);
   const [showEndAllGroupModal, setShowEndAllGroupModal] = React.useState(false);
+  const [decliningSession, setDecliningSession] = React.useState<{
+    id: number;
+    serviceUserName: string;
+    activityName: string;
+  } | null>(null);
 
   const queryClient = useQueryClient();
   const router = useRouter();
   const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
-  const { decliningSession, setDecliningSession, clearDecliningSession } = useSessionStore();
+
+  useEffect(() => {
+    logger.debug('decliningSession state updated in ActiveSessionsDashboard', { decliningSession });
+  }, [decliningSession]);
 
   const {
     oneToOneCount,
@@ -128,94 +136,37 @@ const ActiveSessionsDashboard: React.FC = () => {
     },
   });
 
-  const handleDeclineClick = useCallback((session: any) => {
+  const handleDeclineClick = useCallback((session: any) => (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
     const decliningData = {
       id: session.id,
       serviceUserName: session.admission.serviceUser.name,
       activityName: session.activityLog.activity.name,
     };
-    logger.info('Decline button clicked', decliningData);
+    logger.info('Decline button clicked in ActiveSessionsDashboard', decliningData);
     setDecliningSession(decliningData);
-  }, [setDecliningSession]);
+  }, []);
 
   const handleDeclineSubmit = useCallback(
     (sessionId: number, declineReasonId: number, description: string | null) => {
-      logger.info('Submitting decline', { sessionId, declineReasonId, description });
+      logger.info('Submitting decline in ActiveSessionsDashboard', { sessionId, declineReasonId, description });
       declineSession({ sessionId, declineReasonId, description });
-      clearDecliningSession();
+      setDecliningSession(null);
     },
-    [declineSession, clearDecliningSession],
+    [declineSession],
   );
 
   const handleCloseModal = useCallback(() => {
-    logger.info('Closing decline modal', { sessionId: decliningSession?.id });
-    clearDecliningSession();
-  }, [clearDecliningSession, decliningSession]);
-
-  useEffect(() => {
-    logger.debug('ActiveSessionsDashboard rendered', { totalActive, decliningSession });
-  }, [totalActive, decliningSession]);
-
-  const renderOneToOneSession = useCallback(
-    (session: any) => (
-      <motion.div
-        key={session.id}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="card bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-300"
-      >
-        <div className="card-body">
-          <h2 className="card-title text-xl text-gray-900 dark:text-gray-100">
-            {session.admission.serviceUser.name}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            <strong>Activity:</strong> {session.activityLog.activity.name}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            <strong>Ward:</strong> {session.admission.ward.name}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            <strong>Time In:</strong>{' '}
-            {new Date(session.timeIn).toLocaleString()}
-          </p>
-          <div className="my-4">
-            <ElapsedTime
-              timeIn={session.timeIn}
-              timeOut={session.timeOut}
-              big
-            />
-          </div>
-          <div className="card-actions justify-between space-x-2">
-            {!session.timeOut && (
-              <>
-                <button
-                  onClick={() => handleDeclineClick(session)}
-                  className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
-                >
-                  Decline
-                </button>
-                <button
-                  onClick={() => endSessionMutation.mutate(session.id)}
-                  className="btn bg-red-500 hover:bg-red-600 text-white"
-                >
-                  End Session
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    ),
-    [endSessionMutation, handleDeclineClick],
-  );
+    logger.info('Closing decline modal in ActiveSessionsDashboard', { sessionId: decliningSession?.id });
+    setDecliningSession(null);
+  }, [decliningSession]);
 
   if (isOneToOneLoading || isGroupLoading || isCountsLoading || isLoadingReasons) {
     logger.debug('Loading state detected', { isOneToOneLoading, isGroupLoading, isCountsLoading, isLoadingReasons });
     return (
       <div className="text-center text-gray-500 dark:text-gray-400">
-        <span className="loading loading-spinner loading-lg"></span> Loading
-        active sessions...
+        <span className="loading loading-spinner loading-lg"></span> Loading active sessions...
       </div>
     );
   }
@@ -224,8 +175,7 @@ const ActiveSessionsDashboard: React.FC = () => {
     logger.error('Error loading sessions', { countsError: countsError?.message, oneToOneError: oneToOneError?.message, groupError: groupError?.message });
     return (
       <p className="text-center text-red-500">
-        Error loading sessions:{' '}
-        {(countsError || oneToOneError || groupError)?.message}
+        Error loading sessions: {(countsError || oneToOneError || groupError)?.message}
       </p>
     );
   }
@@ -243,8 +193,7 @@ const ActiveSessionsDashboard: React.FC = () => {
           No Active Sessions
         </h2>
         <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-xl mb-4">
-          To start a session, use the search box below to find a service user
-          you want to engage.
+          To start a session, use the search box below to find a service user you want to engage.
         </p>
         <p className="text-base text-gray-500 dark:text-gray-400">
           <em>Then come back here once a session is started!</em>
@@ -253,7 +202,7 @@ const ActiveSessionsDashboard: React.FC = () => {
     );
   }
 
-  logger.debug('Rendering active sessions', { oneToOneCount, groupCount });
+  logger.debug('Rendering ActiveSessionsDashboard', { oneToOneCount, groupCount, decliningSession });
 
   return (
     <div className="container mx-auto p-4">
@@ -317,7 +266,51 @@ const ActiveSessionsDashboard: React.FC = () => {
             sessions={group.sessions}
           />
         ))}
-        {sessionsToDisplay.map(renderOneToOneSession)}
+        {sessionsToDisplay.map((session: any) => (
+          <motion.div
+            key={session.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="card bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-300"
+          >
+            <div className="card-body">
+              <h2 className="card-title text-xl text-gray-900 dark:text-gray-100">
+                {session.admission.serviceUser.name}
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <strong>Activity:</strong> {session.activityLog.activity.name}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <strong>Ward:</strong> {session.admission.ward.name}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                <strong>Time In:</strong> {new Date(session.timeIn).toLocaleString()}
+              </p>
+              <div className="my-4">
+                <ElapsedTime timeIn={session.timeIn} timeOut={session.timeOut} big />
+              </div>
+              <div className="card-actions justify-between space-x-2">
+                {!session.timeOut && (
+                  <>
+                    <button
+                      onClick={handleDeclineClick(session)}
+                      className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => endSessionMutation.mutate(session.id)}
+                      className="btn bg-red-500 hover:bg-red-600 text-white"
+                    >
+                      End Session
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       <Modal
@@ -440,4 +433,5 @@ const ActiveSessionsDashboard: React.FC = () => {
 };
 
 export default ActiveSessionsDashboard;
+
 // src/features/Sessions/ui/ActiveSessionsDashboard.tsx
