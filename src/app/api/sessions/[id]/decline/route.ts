@@ -74,3 +74,4 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 }
+// src/app/api/sessions/[id]/decline/route.ts
