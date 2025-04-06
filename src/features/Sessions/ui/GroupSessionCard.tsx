@@ -1,7 +1,8 @@
 // src/features/Sessions/ui/GroupSessionCard.tsx
+
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -27,11 +28,20 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [showAddUsersModal, setShowAddUsersModal] = React.useState(false);
+  const [forceRender, setForceRender] = React.useState(false);
   const { decliningSession, setDecliningSession, clearDecliningSession } = useSessionStore();
 
   const { data: activeAdmissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
   const { data: activeActivities = [], isLoading: isActivitiesLoading } = useActiveActivities();
   const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
+
+  useEffect(() => {
+    logger.debug('decliningSession state updated in GroupSessionCard', { decliningSession });
+    const unsubscribe = useSessionStore.subscribe((state) => {
+      logger.debug('Zustand store subscription triggered in GroupSessionCard', { decliningSession: state.decliningSession });
+    });
+    return () => unsubscribe();
+  }, [decliningSession]);
 
   const endGroupSessionMutation = useMutation({
     mutationFn: async () => {
@@ -65,7 +75,8 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
     },
   });
 
-  const handleDeclineClick = useCallback((sessionId: number) => {
+  const handleDeclineClick = useCallback((sessionId: number) => (event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent click from bubbling
     const session = sessions.find((s) => s.id === sessionId);
     if (!session) {
       logger.warn('Session not found for decline', { sessionId });
@@ -78,6 +89,7 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
     };
     logger.info('Decline clicked for group session', decliningData);
     setDecliningSession(decliningData);
+    setForceRender((prev) => !prev);
   }, [sessions, setDecliningSession]);
 
   const handleDeclineSubmit = useCallback(
@@ -96,7 +108,7 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
     return <div>Loading admissions, activities, and reasons...</div>;
   }
 
-  logger.debug('Rendering GroupSessionCard', { groupRef, sessionCount: sessions.length });
+  logger.debug('Rendering GroupSessionCard', { groupRef, sessionCount: sessions.length, forceRender });
 
   return (
     <motion.div
@@ -117,7 +129,7 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
               >
                 <span>{s.admission.serviceUser.name} <span className="ml-1 text-xs">(Ward: {s.admission?.ward?.name})</span></span>
                 <button
-                  onClick={() => handleDeclineClick(s.id)}
+                  onClick={handleDeclineClick(s.id)}
                   className="ml-2 text-yellow-500 hover:text-yellow-700"
                   title="Decline Session"
                 >
