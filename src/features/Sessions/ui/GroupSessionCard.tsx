@@ -1,13 +1,12 @@
 // src/features/Sessions/ui/GroupSessionCard.tsx
-
 'use client';
 
 import React, { useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
+import { Dialog, Transition } from '@headlessui/react';
 import { logger } from '@/lib/logger';
-import { useSessionStore } from '@/stores/sessionStore';
 import GroupSessionModal from './GroupSessionModal';
 import DeclineSessionModal from './DeclineSessionModal';
 import { apiClient } from '@/lib/api-client';
@@ -28,20 +27,23 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [showAddUsersModal, setShowAddUsersModal] = React.useState(false);
-  const [forceRender, setForceRender] = React.useState(false);
-  const { decliningSession, setDecliningSession, clearDecliningSession } = useSessionStore();
+  const [isDeclineModalOpen, setIsDeclineModalOpen] = React.useState(false);
+  const [decliningSession, setDecliningSession] = React.useState<{
+    id: number;
+    serviceUserName: string;
+    activityName: string;
+  } | null>(null);
 
   const { data: activeAdmissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
   const { data: activeActivities = [], isLoading: isActivitiesLoading } = useActiveActivities();
   const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
 
   useEffect(() => {
-    logger.debug('decliningSession state updated in GroupSessionCard', { decliningSession });
-    const unsubscribe = useSessionStore.subscribe((state) => {
-      logger.debug('Zustand store subscription triggered in GroupSessionCard', { decliningSession: state.decliningSession });
+    logger.debug('decliningSession or modal state updated in GroupSessionCard', {
+      decliningSession,
+      isDeclineModalOpen,
     });
-    return () => unsubscribe();
-  }, [decliningSession]);
+  }, [decliningSession, isDeclineModalOpen]);
 
   const endGroupSessionMutation = useMutation({
     mutationFn: async () => {
@@ -75,40 +77,50 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
     },
   });
 
-  const handleDeclineClick = useCallback((sessionId: number) => (event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent click from bubbling
-    const session = sessions.find((s) => s.id === sessionId);
-    if (!session) {
-      logger.warn('Session not found for decline', { sessionId });
-      return;
-    }
-    const decliningData = {
-      id: session.id,
-      serviceUserName: session.admission?.serviceUser?.name || 'Unknown',
-      activityName: session.activityLog?.activity?.name || 'N/A',
-    };
-    logger.info('Decline clicked for group session', decliningData);
-    setDecliningSession(decliningData);
-    setForceRender((prev) => !prev);
-  }, [sessions, setDecliningSession]);
+  const handleDeclineClick = useCallback(
+    (sessionId: number) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      event.preventDefault();
+      const session = sessions.find((s) => s.id === sessionId);
+      if (!session) {
+        logger.warn('Session not found for decline', { sessionId });
+        return;
+      }
+      const decliningData = {
+        id: session.id,
+        serviceUserName: session.admission?.serviceUser?.name || 'Unknown',
+        activityName: session.activityLog?.activity?.name || 'N/A',
+      };
+      logger.info('Decline clicked for group session', decliningData);
+      setDecliningSession(decliningData);
+      setIsDeclineModalOpen(true);
+      logger.debug('Opening decline modal', { decliningData });
+    },
+    [sessions],
+  );
 
   const handleDeclineSubmit = useCallback(
     (sessionId: number, declineReasonId: number, description: string | null) => {
       logger.info('Submitting group session decline', { sessionId, declineReasonId, description });
-      declineSession({ sessionId, declineReasonId, description, isGroup: true });
-      clearDecliningSession();
+      declineSession({ sessionId, declineReasonId, description });
+      setDecliningSession(null);
+      setIsDeclineModalOpen(false);
     },
-    [declineSession, clearDecliningSession],
+    [declineSession],
   );
 
-  const decliningSessionData = decliningSession && sessions.find((s) => s.id === decliningSession.id);
+  const handleCloseModal = useCallback(() => {
+    logger.info('Closing DeclineSessionModal', { sessionId: decliningSession?.id });
+    setDecliningSession(null);
+    setIsDeclineModalOpen(false);
+  }, [decliningSession]);
 
   if (isAdmissionsLoading || isActivitiesLoading || isLoadingReasons) {
     logger.debug('Loading state detected', { isAdmissionsLoading, isActivitiesLoading, isLoadingReasons });
     return <div>Loading admissions, activities, and reasons...</div>;
   }
 
-  logger.debug('Rendering GroupSessionCard', { groupRef, sessionCount: sessions.length, forceRender });
+  logger.debug('Rendering GroupSessionCard', { groupRef, sessionCount: sessions.length });
 
   return (
     <motion.div
@@ -151,6 +163,8 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
           <button onClick={() => endGroupSessionMutation.mutate()} className="btn bg-red-500 hover:bg-red-600 text-white rounded-lg">End Group Session</button>
         </div>
       </div>
+
+      {/* Existing GroupSessionModal */}
       <GroupSessionModal
         isOpen={showAddUsersModal}
         onClose={() => {
@@ -164,19 +178,50 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
         }}
         existingSessionId={sessions[0]?.id}
       />
-      {decliningSessionData && (
-        <DeclineSessionModal
-          show={!!decliningSession}
-          sessionId={decliningSession.id}
-          serviceUserName={decliningSession.serviceUserName}
-          activityName={decliningSession.activityName}
-          declineReasons={declineReasons}
-          onDecline={handleDeclineSubmit}
-          onClose={() => {
-            logger.info('Closing DeclineSessionModal', { sessionId: decliningSession.id });
-            clearDecliningSession();
-          }}
-        />
+
+      {/* Headless UI Dialog for DeclineSessionModal */}
+      {decliningSession && (
+        <Transition appear show={isDeclineModalOpen} as={React.Fragment}>
+          <Dialog as="div" className="relative z-50" onClose={handleCloseModal}>
+            <Transition.Child
+              as={React.Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black bg-opacity-25" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4 text-center">
+                <Transition.Child
+                  as={React.Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-lg bg-whitex dark:bg-gray-800x p-6x text-left align-middle shadow-xlx transition-all">
+                    <DeclineSessionModal
+                      show={isDeclineModalOpen}
+                      sessionId={decliningSession.id}
+                      serviceUserName={decliningSession.serviceUserName}
+                      activityName={decliningSession.activityName}
+                      declineReasons={declineReasons}
+                      onDecline={handleDeclineSubmit}
+                      onClose={handleCloseModal}
+                    />
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
       )}
     </motion.div>
   );
