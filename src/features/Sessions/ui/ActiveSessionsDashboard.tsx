@@ -1,5 +1,4 @@
 // src/features/Sessions/ui/ActiveSessionsDashboard.tsx
-
 'use client';
 
 import React, { useCallback, useMemo, useEffect } from 'react';
@@ -7,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Dialog, Transition } from '@headlessui/react';
 import {
   useActiveSessions,
   useActiveSessionsCounts,
@@ -24,6 +24,7 @@ const ActiveSessionsDashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
   const [showEndAllOneToOneModal, setShowEndAllOneToOneModal] = React.useState(false);
   const [showEndAllGroupModal, setShowEndAllGroupModal] = React.useState(false);
+  const [isDeclineModalOpen, setIsDeclineModalOpen] = React.useState(false);
   const [decliningSession, setDecliningSession] = React.useState<{
     id: number;
     serviceUserName: string;
@@ -35,8 +36,8 @@ const ActiveSessionsDashboard: React.FC = () => {
   const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
 
   useEffect(() => {
-    logger.debug('decliningSession state updated in ActiveSessionsDashboard', { decliningSession });
-  }, [decliningSession]);
+    logger.debug('decliningSession state updated in ActiveSessionsDashboard', { decliningSession, isDeclineModalOpen });
+  }, [decliningSession, isDeclineModalOpen]);
 
   const {
     oneToOneCount,
@@ -136,23 +137,29 @@ const ActiveSessionsDashboard: React.FC = () => {
     },
   });
 
-  const handleDeclineClick = useCallback((session: any) => (event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    const decliningData = {
-      id: session.id,
-      serviceUserName: session.admission.serviceUser.name,
-      activityName: session.activityLog.activity.name,
-    };
-    logger.info('Decline button clicked in ActiveSessionsDashboard', decliningData);
-    setDecliningSession(decliningData);
-  }, []);
+  const handleDeclineClick = useCallback(
+    (session: any) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      event.preventDefault();
+      const decliningData = {
+        id: session.id,
+        serviceUserName: session.admission.serviceUser.name,
+        activityName: session.activityLog.activity.name,
+      };
+      logger.info('Decline button clicked in ActiveSessionsDashboard', decliningData);
+      setDecliningSession(decliningData);
+      setIsDeclineModalOpen(true);
+      logger.debug('Opening decline modal', { decliningData });
+    },
+    [],
+  );
 
   const handleDeclineSubmit = useCallback(
     (sessionId: number, declineReasonId: number, description: string | null) => {
       logger.info('Submitting decline in ActiveSessionsDashboard', { sessionId, declineReasonId, description });
       declineSession({ sessionId, declineReasonId, description });
       setDecliningSession(null);
+      setIsDeclineModalOpen(false);
     },
     [declineSession],
   );
@@ -160,6 +167,7 @@ const ActiveSessionsDashboard: React.FC = () => {
   const handleCloseModal = useCallback(() => {
     logger.info('Closing decline modal in ActiveSessionsDashboard', { sessionId: decliningSession?.id });
     setDecliningSession(null);
+    setIsDeclineModalOpen(false);
   }, [decliningSession]);
 
   if (isOneToOneLoading || isGroupLoading || isCountsLoading || isLoadingReasons) {
@@ -313,6 +321,7 @@ const ActiveSessionsDashboard: React.FC = () => {
         ))}
       </div>
 
+      {/* Existing Modals with Modal.tsx */}
       <Modal
         show={showEndAllOneToOneModal}
         handleClose={() => {
@@ -417,21 +426,53 @@ const ActiveSessionsDashboard: React.FC = () => {
         </div>
       </Modal>
 
+      {/* New Headless UI Dialog for DeclineSessionModal */}
       {decliningSession && (
-        <DeclineSessionModal
-          show={!!decliningSession}
-          sessionId={decliningSession.id}
-          serviceUserName={decliningSession.serviceUserName}
-          activityName={decliningSession.activityName}
-          declineReasons={declineReasons}
-          onDecline={handleDeclineSubmit}
-          onClose={handleCloseModal}
-        />
+        <Transition appear show={isDeclineModalOpen} as={React.Fragment}>
+          <Dialog as="div" className="relative z-50" onClose={handleCloseModal}>
+            <Transition.Child
+              as={React.Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black bg-opacity-25" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4 text-center">
+                <Transition.Child
+                  as={React.Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all">
+                    <DeclineSessionModal
+                      show={isDeclineModalOpen}
+                      sessionId={decliningSession.id}
+                      serviceUserName={decliningSession.serviceUserName}
+                      activityName={decliningSession.activityName}
+                      declineReasons={declineReasons}
+                      onDecline={handleDeclineSubmit}
+                      onClose={handleCloseModal}
+                    />
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
       )}
     </div>
   );
 };
 
 export default ActiveSessionsDashboard;
-
 // src/features/Sessions/ui/ActiveSessionsDashboard.tsx
