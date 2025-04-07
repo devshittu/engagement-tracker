@@ -46,7 +46,7 @@ const DeclineSessionModal: React.FC<DeclineSessionModalProps> = ({
   };
 
   return (
-    <Modal show={show} handleClose={onClose} ariaLabel="Decline Session Confirmation">
+    // <Modal show={show} handleClose={onClose} ariaLabel="Decline Session Confirmation">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -115,7 +115,7 @@ const DeclineSessionModal: React.FC<DeclineSessionModalProps> = ({
           </button>
         </div>
       </motion.div>
-    </Modal>
+    // </Modal>
   );
 };
 
