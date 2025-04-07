@@ -1,5 +1,4 @@
-// src/app/dashboard/page.tsx
-
+// src/app/(protected)/dashboard/page.tsx
 'use client';
 import { useState, useEffect } from 'react'; // Added useEffect
 import { useAuth } from '@/features/auth/hooks/useAuth';
