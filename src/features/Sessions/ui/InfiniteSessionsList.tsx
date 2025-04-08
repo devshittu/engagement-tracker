@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { SessionsResponse, GroupedResponse, GroupedSession, Session } from '@/types/serviceUser';
 import { useSessions } from '@/hooks/useSessions';
 import ElapsedTime from './ElapsedTime';
-import GroupSessionCard from './GroupSessionCard';
+import GroupSessionCard from './cards/GroupSessionCard';
 
 type SessionsData = SessionsResponse | GroupedResponse;
 
