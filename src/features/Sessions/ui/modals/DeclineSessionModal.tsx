@@ -4,7 +4,7 @@
 
 import React, { useEffect } from 'react';
 import Modal from '@/components/Modal/Modal';
-import { DeclineReason } from '../types';
+import { DeclineReason } from '../../types';
 import { motion } from 'framer-motion';
 import { logger } from '@/lib/logger';
 
