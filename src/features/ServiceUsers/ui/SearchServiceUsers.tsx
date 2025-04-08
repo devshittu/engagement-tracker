@@ -8,8 +8,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { ServiceUser } from '@/types/serviceUser';
 import { useSearchServiceUsers } from '@/features/Search/hooks/useSearchServiceUsers';
 import { apiClient } from '@/lib/api-client';
-import CreateSessionModal from '@/features/Sessions/ui/CreateSessionModal';
-import GroupSessionModal from '@/features/Sessions/ui/GroupSessionModal';
+import CreateSessionModal from '@/features/Sessions/ui/modals/CreateSessionModal';
+import GroupSessionModal from '@/features/Sessions/ui/modals/GroupSessionModal';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 
