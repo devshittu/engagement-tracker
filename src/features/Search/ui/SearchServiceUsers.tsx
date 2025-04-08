@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { ServiceUser } from '@/types/serviceUser';
 import { useSearchServiceUsers } from '../hooks/useSearchServiceUsers';
 import axios from 'axios';
-import CreateSessionModal from '@/features/Sessions/ui/CreateSessionModal';
+import CreateSessionModal from '@/features/Sessions/ui/modals/CreateSessionModal';
 
 type Admission = {
   id: number;
