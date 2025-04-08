@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'; // Added useEffect
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import ActiveSessionsDashboard from '@/features/Sessions/ui/ActiveSessionsDashboard';
+import ActiveSessionsDashboard from '@/features/Sessions/ui/dashboard/ActiveSessionsDashboard';
 import SearchServiceUsers from '@/features/ServiceUsers/ui/SearchServiceUsers';
 import { logger } from '@/lib/logger'; // Added logger
 
