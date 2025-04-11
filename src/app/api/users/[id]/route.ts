@@ -1,140 +1,12 @@
 // src/app/api/users/[id]/route.ts
 
-// import { NextRequest, NextResponse } from 'next/server';
-// import { prisma } from '@/lib/prisma';
-// import { supabase } from '@/lib/supabase';
-
-// export async function GET(
-//   req: NextRequest,
-//   { params }: { params: { id: string } },
-// ) {
-//   const { id } = params;
-//   const userJson = req.headers.get('x-supabase-user');
-//   if (!userJson) {
-//     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-//   }
-
-//   const user = JSON.parse(userJson);
-//   const currentUser = await prisma.user.findUnique({
-//     where: { id: user.id },
-//     include: { role: true },
-//   });
-
-//   if (
-//     !currentUser ||
-//     (currentUser.role.level < 4 && currentUser.role.name !== 'Super Admin')
-//   ) {
-//     return NextResponse.json(
-//       { error: 'Insufficient permissions' },
-//       { status: 403 },
-//     );
-//   }
-
-//   const targetUser = await prisma.user.findUnique({
-//     where: { id },
-//     include: { department: true, role: true },
-//   });
-//   if (!targetUser)
-//     return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-//   return NextResponse.json(targetUser);
-// }
-
-// export async function PUT(
-//   req: NextRequest,
-//   { params }: { params: { id: string } },
-// ) {
-//   const { id } = params;
-//   const userJson = req.headers.get('x-supabase-user');
-//   if (!userJson) {
-//     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-//   }
-
-//   const user = JSON.parse(userJson);
-//   const currentUser = await prisma.user.findUnique({
-//     where: { id: user.id },
-//     include: { role: true, department: true },
-//   });
-
-//   if (
-//     !currentUser ||
-//     (currentUser.role.level < 4 && currentUser.role.name !== 'Super Admin')
-//   ) {
-//     return NextResponse.json(
-//       { error: 'Insufficient permissions' },
-//       { status: 403 },
-//     );
-//   }
-
-//   const targetUser = await prisma.user.findUnique({
-//     where: { id },
-//     include: { department: true, role: true },
-//   });
-//   if (!targetUser)
-//     return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-//   const { email, departmentId, roleId } = await req.json();
-//   if (!email || !Number.isInteger(departmentId) || !Number.isInteger(roleId)) {
-//     return NextResponse.json({ error: 'Invalid user data' }, { status: 400 });
-//   }
-
-//   const newRole = await prisma.role.findUnique({ where: { id: roleId } });
-//   if (!newRole)
-//     return NextResponse.json({ error: 'Role not found' }, { status: 400 });
-//   if (
-//     currentUser.role.level <= newRole.level &&
-//     currentUser.role.name !== 'Super Admin' &&
-//     currentUser.department.id !== targetUser.department.id
-//   ) {
-//     return NextResponse.json(
-//       { error: 'Cannot assign higher or equal role' },
-//       { status: 403 },
-//     );
-//   }
-
-//   const updatedUser = await prisma.user.update({
-//     where: { id },
-//     data: { email, departmentId, roleId, updatedAt: new Date() },
-//     include: { department: true, role: true },
-//   });
-
-//   return NextResponse.json(updatedUser);
-// }
-
-// export async function DELETE(
-//   req: NextRequest,
-//   { params }: { params: { id: string } },
-// ) {
-//   const { id } = params;
-//   const userJson = req.headers.get('x-supabase-user');
-//   if (!userJson) {
-//     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-//   }
-
-//   const user = JSON.parse(userJson);
-//   const currentUser = await prisma.user.findUnique({
-//     where: { id: user.id },
-//     include: { role: true },
-//   });
-
-//   if (!currentUser || currentUser.role.name !== 'Super Admin') {
-//     return NextResponse.json(
-//       { error: 'Only Super Admin can delete users' },
-//       { status: 403 },
-//     );
-//   }
-
-//   await prisma.user.delete({ where: { id } });
-//   await supabase.auth.admin.deleteUser(id);
-
-//   return NextResponse.json({ message: 'User deleted' }, { status: 200 });
-// }
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { supabase } from '@/lib/supabase';
 import { Prisma } from '@prisma/client';
+
+type Params = { params: Promise<{ id: string }>  };
 
 const log = (message: string, data?: any) =>
   console.log(
@@ -144,7 +16,7 @@ const log = (message: string, data?: any) =>
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: Params,
 ) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
   const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
@@ -152,7 +24,7 @@ export async function GET(
   );
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     log('Fetching user', { id });
@@ -181,7 +53,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: Params,
 ) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4; additional checks will be manual
   const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
@@ -190,7 +62,7 @@ export async function PUT(
   if (authResult instanceof NextResponse) return authResult;
 
   const { userProfile, userId } = authResult;
-  const { id } = params;
+  const { id } = await params;
 
   // Initialize variables to avoid undefined errors
   let email: string | undefined = undefined;
@@ -279,7 +151,7 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: Params,
 ) {
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
   const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
@@ -287,7 +159,7 @@ export async function DELETE(
   );
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     log('Deleting user', { id });
