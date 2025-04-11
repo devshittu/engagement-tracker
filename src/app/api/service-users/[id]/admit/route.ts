@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }>  };
 
 const log = (message: string, data?: any) =>
   console.log(`[API:SERVICE-USERS/ADMIT] ${message}`, data ? JSON.stringify(data, null, 2) : '');
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (authResult instanceof NextResponse) return authResult;
 
   const { userId } = authResult;
-  const { id: serviceUserIdStr } = params;
+  const { id: serviceUserIdStr } = await params;
   const serviceUserId: number = parseInt(serviceUserIdStr, 10);
 
   if (isNaN(serviceUserId)) {
