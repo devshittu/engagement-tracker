@@ -6,17 +6,17 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }>  };
 
 const log = (message: string, data?: any) =>
   console.log(`[API:SESSIONS/END] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function POST(req: NextRequest, { params }: Params) {
+  const { id } = await params;
   const authResult = await authenticateRequest(req, 0, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
   const { userId } = authResult;
-  const { id } = params;
   const sessionId = parseInt(id);
 
   if (isNaN(sessionId)) {
