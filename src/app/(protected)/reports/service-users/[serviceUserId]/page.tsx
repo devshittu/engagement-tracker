@@ -1,16 +1,20 @@
 // src/app/reports/service-users/[serviceUserId]/page.tsx
+
 import DashboardPageFrame from '@/components/Frame/DashboardPageFrame';
 import { ServiceUserAdmissionsReport } from '@/features/Reports/components/ServiceUserAdmissionsReport';
 import { prisma } from '@/lib/prisma';
 
+// Define params as a Promise for Server Components
 type ServiceUserAdmissionsPageProps = {
-  params: { serviceUserId: string };
+  params: Promise<{ serviceUserId: string }>;
 };
 
+// Make the function async to await the params
 export default async function ServiceUserAdmissionsPage({
   params,
 }: ServiceUserAdmissionsPageProps) {
-  const serviceUserId = parseInt(params.serviceUserId, 10);
+  const { serviceUserId: serviceUserIdStr } = await params; // Await the Promise to get params
+  const serviceUserId = parseInt(serviceUserIdStr, 10);
 
   if (isNaN(serviceUserId)) {
     return (
@@ -30,12 +34,12 @@ export default async function ServiceUserAdmissionsPage({
 
   const title = serviceUser
     ? `Admission History for ${serviceUser.name}`
-    : `Admission History for Service User ${params.serviceUserId}`;
+    : `Admission History for Service User ${serviceUserIdStr}`;
 
   return (
     <>
       <DashboardPageFrame title={title} pageActions={<></>}>
-        <ServiceUserAdmissionsReport serviceUserId={params.serviceUserId} />
+        <ServiceUserAdmissionsReport serviceUserId={serviceUserIdStr} />
       </DashboardPageFrame>
     </>
   );
