@@ -6,7 +6,7 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }>  };
 
 const log = (message: string, data?: any) =>
   console.log(`[API:SESSIONS/ID] ${message}`, data ? JSON.stringify(data, null, 2) : '');
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id } = params;
+  const { id } = await params;
   const sessionId = parseInt(id);
 
   if (isNaN(sessionId)) {
@@ -64,7 +64,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id } = params;
+  const { id } = await params;
   const sessionId = parseInt(id);
 
   if (isNaN(sessionId)) {
@@ -132,7 +132,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id } = params;
+  const { id } = await params;
   const sessionId = parseInt(id);
 
   if (isNaN(sessionId)) {
