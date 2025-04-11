@@ -26,7 +26,7 @@ type GroupedSessionsResponse = {
   total: number;
 };
 
-type ActiveSessionsResponse = SessionsResponse | GroupedSessionsResponse;
+export type ActiveSessionsResponse = SessionsResponse | GroupedSessionsResponse;
 
 const fetchActiveSessions = async ({
   sortBy,
@@ -53,14 +53,15 @@ export const useActiveSessions = ({
   type,
   groupByGroupRef,
 }: FetchParams) =>
-  useQuery<ActiveSessionsResponse, Error>({
+  useQuery({
     queryKey: ['activeSessions', { sortBy, order, type, groupByGroupRef }],
     queryFn: () => fetchActiveSessions({ sortBy, order, type, groupByGroupRef }),
     staleTime: 1000 * 60,
+    select: (data: ActiveSessionsResponse) => data, // Explicitly return data as-is
   });
 
 export const useActiveSessionsCounts = () => {
-  const oneToOne = useQuery<SessionsResponse, Error>({
+  const oneToOne = useQuery({
     queryKey: ['activeSessionsCount', { type: 'ONE_TO_ONE' }],
     queryFn: () =>
       fetchActiveSessions({
@@ -69,9 +70,10 @@ export const useActiveSessionsCounts = () => {
         type: 'ONE_TO_ONE',
       }),
     staleTime: 1000 * 60,
+    select: (data: ActiveSessionsResponse) => data as SessionsResponse, // Cast to SessionsResponse
   });
 
-  const group = useQuery<GroupedSessionsResponse, Error>({
+  const group = useQuery({
     queryKey: ['activeSessionsCount', { type: 'GROUP' }],
     queryFn: () =>
       fetchActiveSessions({
@@ -81,6 +83,7 @@ export const useActiveSessionsCounts = () => {
         groupByGroupRef: true,
       }),
     staleTime: 1000 * 60,
+    select: (data: ActiveSessionsResponse) => data as GroupedSessionsResponse, // Cast to GroupedSessionsResponse
   });
 
   return {
