@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Logo } from '../Icons/Logo';
-import { LogOutButton } from '../Buttons/LogOutButton';
 import { CloseMenuButton } from '../Buttons/CloseMenuButton';
 import { MenuButton } from '../Buttons/MenuButton';
 import { Collapsible } from './Collapsible';
 import { ClockIcon, MoreIcon, CheckIcon, DNAIcon } from '../Icons';
+import LogoutButton from '@/features/auth/components/LogoutButton';
 
 type Link = {
   label: string;
@@ -178,7 +178,7 @@ export const Sidebar: React.FC = () => {
           ))}
         </ul>
         <div className="mt-auto grid grid-cols-2 items-center">
-          <LogOutButton />
+          <LogoutButton />
           <CloseMenuButton onClick={() => setOpen(false)} />
         </div>
       </aside>
