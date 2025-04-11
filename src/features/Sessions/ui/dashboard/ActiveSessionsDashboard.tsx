@@ -2,24 +2,20 @@
 
 'use client';
 
-import React, { useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Dialog, Transition } from '@headlessui/react';
-import {
-  useActiveSessions,
-  useActiveSessionsCounts,
-} from '@/features/Sessions/hooks/useActiveSessions';
-import { useDeclineSession } from '@/features/Sessions/hooks/useDeclineSession';
-import ElapsedTime from '../ElapsedTime';
-import GroupSessionCard from '../cards/GroupSessionCard';
-import DeclineSessionModal from '../modals/DeclineSessionModal';
-import ConfirmationDialog from '@/components/ui/modals/ConfirmationDialog';
-import { motion } from 'framer-motion';
-import { apiClient } from '@/lib/api-client';
+// import { apiClient } from '@/lib/logger';
 import { logger } from '@/lib/logger';
+import { useActiveSessions, useActiveSessionsCounts } from '@/features/Sessions/hooks/useActiveSessions';
+import { useDeclineSession } from '@/features/Sessions/hooks/useDeclineSession';
+import DashboardHeader from './components/DashboardHeader';
+import SessionGrid from './components/SessionGrid';
+import ConfirmationDialog from '@/components/ui/modals/ConfirmationDialog';
+import DeclineSessionModal from '@/features/Sessions/ui/modals/DeclineSessionModal';
+import { Dialog, Transition } from '@headlessui/react';
+import { apiClient } from '@/lib/api-client';
 
 const ActiveSessionsDashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
@@ -40,17 +36,6 @@ const ActiveSessionsDashboard: React.FC = () => {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { declineReasons, declineSession, isLoadingReasons } = useDeclineSession();
-
-  useEffect(() => {
-    logger.debug('State updated in ActiveSessionsDashboard', {
-      decliningSession,
-      isDeclineModalOpen,
-      endingSession,
-      isEndSessionModalOpen,
-      showEndAllOneToOneModal,
-      showEndAllGroupModal,
-    });
-  }, [decliningSession, isDeclineModalOpen, endingSession, isEndSessionModalOpen, showEndAllOneToOneModal, showEndAllGroupModal]);
 
   const {
     oneToOneCount,
@@ -78,24 +63,18 @@ const ActiveSessionsDashboard: React.FC = () => {
     groupByGroupRef: true,
   });
 
-  const totalActive = (oneToOneData?.total ?? 0) + (groupData?.total ?? 0);
-  const oneToOneSessions = useMemo(
-    () => ('sessions' in (oneToOneData ?? {}) ? oneToOneData.sessions : []),
-    [oneToOneData],
-  );
-  const groupSessions = useMemo(
-    () => ('groups' in (groupData ?? {}) ? groupData.groups : []),
-    [groupData],
-  );
-  const sessionsToDisplay = useMemo(
-    () => oneToOneSessions.slice(0, 6 - groupSessions.length),
-    [oneToOneSessions, groupSessions],
-  );
+  useEffect(() => {
+    logger.debug('State updated in ActiveSessionsDashboard', {
+      decliningSession,
+      isDeclineModalOpen,
+      endingSession,
+      isEndSessionModalOpen,
+      showEndAllOneToOneModal,
+      showEndAllGroupModal,
+    });
+  }, [decliningSession, isDeclineModalOpen, endingSession, isEndSessionModalOpen, showEndAllOneToOneModal, showEndAllGroupModal]);
 
-  const toggleSortOrder = useCallback(() => {
-    logger.info('Toggling sort order', { previous: sortOrder, new: sortOrder === 'asc' ? 'desc' : 'asc' });
-    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-  }, [sortOrder]);
+  const totalActive = (oneToOneData?.total ?? 0) + (groupData?.total ?? 0);
 
   const endSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
@@ -152,52 +131,46 @@ const ActiveSessionsDashboard: React.FC = () => {
     },
   });
 
-  const handleDeclineClick = useCallback(
-    (session: any) => (event: React.MouseEvent) => {
-      event.stopPropagation();
-      event.preventDefault();
-      const decliningData = {
-        id: session.id,
-        serviceUserName: session.admission.serviceUser.name,
-        activityName: session.activityLog.activity.name,
-      };
-      logger.info('Decline button clicked in ActiveSessionsDashboard', decliningData);
-      setDecliningSession(decliningData);
-      setIsDeclineModalOpen(true);
-      logger.debug('Opening decline modal', { decliningData });
-    },
-    [],
-  );
+  const handleDeclineClick = useCallback((session: any) => (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const decliningData = {
+      id: session.id,
+      serviceUserName: session.admission.serviceUser.name,
+      activityName: session.activityLog.activity.name,
+    };
+    logger.info('Decline button clicked', decliningData);
+    setDecliningSession(decliningData);
+    setIsDeclineModalOpen(true);
+  }, []);
 
-  const handleEndSessionClick = useCallback(
-    (sessionId: number, serviceUserName: string) => (event: React.MouseEvent) => {
-      event.stopPropagation();
-      event.preventDefault();
-      logger.info('End session clicked in ActiveSessionsDashboard', { sessionId, serviceUserName });
-      setEndingSession({ id: sessionId, serviceUserName });
-      setIsEndSessionModalOpen(true);
-    },
-    [],
-  );
+  const handleEndSessionClick = useCallback((sessionId: number, serviceUserName: string) => (event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    logger.info('End session clicked', { sessionId, serviceUserName });
+    setEndingSession({ id: sessionId, serviceUserName });
+    setIsEndSessionModalOpen(true);
+  }, []);
 
-  const handleDeclineSubmit = useCallback(
-    (sessionId: number, declineReasonId: number, description: string | null) => {
-      logger.info('Submitting decline in ActiveSessionsDashboard', { sessionId, declineReasonId, description });
-      declineSession({ sessionId, declineReasonId, description });
-      setDecliningSession(null);
-      setIsDeclineModalOpen(false);
-    },
-    [declineSession],
-  );
+  const handleDeclineSubmit = useCallback((sessionId: number, declineReasonId: number, description: string | null) => {
+    logger.info('Submitting decline', { sessionId, declineReasonId, description });
+    declineSession({ sessionId, declineReasonId, description });
+    setDecliningSession(null);
+    setIsDeclineModalOpen(false);
+  }, [declineSession]);
 
   const handleCloseDeclineModal = useCallback(() => {
-    logger.info('Closing decline modal in ActiveSessionsDashboard', { sessionId: decliningSession?.id });
+    logger.info('Closing decline modal', { sessionId: decliningSession?.id });
     setDecliningSession(null);
     setIsDeclineModalOpen(false);
   }, [decliningSession]);
 
+  const toggleSortOrder = useCallback(() => {
+    logger.info('Toggling sort order', { previous: sortOrder, new: sortOrder === 'asc' ? 'desc' : 'asc' });
+    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  }, [sortOrder]);
+
   if (isOneToOneLoading || isGroupLoading || isCountsLoading || isLoadingReasons) {
-    logger.debug('Loading state detected', { isOneToOneLoading, isGroupLoading, isCountsLoading, isLoadingReasons });
     return (
       <div className="text-center text-gray-500 dark:text-gray-400">
         <span className="loading loading-spinner loading-lg"></span> Loading active sessions...
@@ -214,140 +187,23 @@ const ActiveSessionsDashboard: React.FC = () => {
     );
   }
 
-  if (totalActive === 0) {
-    logger.info('No active sessions', { totalActive });
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="flex flex-col items-center justify-center text-center min-h-[40vh]"
-      >
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
-          No Active Sessions
-        </h2>
-        <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-xl mb-4">
-          To start a session, use the search box below to find a service user you want to engage.
-        </p>
-        <p className="text-base text-gray-500 dark:text-gray-400">
-          <em>Then come back here once a session is started!</em>
-        </p>
-      </motion.div>
-    );
-  }
-
-  logger.debug('Rendering ActiveSessionsDashboard', { oneToOneCount, groupCount, decliningSession });
-
   return (
     <div className="container mx-auto p-4">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-          Active Sessions
-        </h1>
-        <div className="flex flex-wrap items-center space-x-4 mt-4 md:mt-0">
-          <div className="badge badge-lg bg-teal-500 text-white">
-            Total Active: {totalActive}
-          </div>
-          <button
-            className="btn btn-outline hover:bg-teal-500 hover:text-white"
-            onClick={toggleSortOrder}
-          >
-            {sortOrder === 'asc' ? 'Earliest First' : 'Latest First'}
-          </button>
-          <button
-            onClick={() => {
-              logger.info('Opening end all one-to-one modal', { count: oneToOneCount });
-              setShowEndAllOneToOneModal(true);
-            }}
-            className={`btn bg-red-500 hover:bg-red-600 text-white ${oneToOneCount === 0 ? 'btn-disabled' : ''}`}
-            disabled={oneToOneCount === 0}
-          >
-            End All One-to-One ({oneToOneCount})
-          </button>
-          <button
-            onClick={() => {
-              logger.info('Opening end all group modal', { count: groupCount });
-              setShowEndAllGroupModal(true);
-            }}
-            className={`btn bg-red-600 hover:bg-red-700 text-white ${groupCount === 0 ? 'btn-disabled' : ''}`}
-            disabled={groupCount === 0}
-          >
-            End All Group ({groupCount})
-          </button>
-          <Link
-            href="/sessions/declined"
-            className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            View Declined
-          </Link>
-          {totalActive > 6 && (
-            <Link
-              href="/sessions/active"
-              className="btn bg-teal-500 hover:bg-teal-600 text-white"
-            >
-              View All
-            </Link>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {groupSessions.map((group: any) => (
-          <GroupSessionCard
-            key={group.groupRef}
-            groupRef={group.groupRef}
-            groupDescription={group.groupDescription}
-            sessions={group.sessions}
-          />
-        ))}
-        {sessionsToDisplay.map((session: any) => (
-          <motion.div
-            key={session.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="card bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-300"
-          >
-            <div className="card-body">
-              <h2 className="card-title text-xl text-gray-900 dark:text-gray-100">
-                {session.admission.serviceUser.name}
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Activity:</strong> {session.activityLog.activity.name}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Ward:</strong> {session.admission.ward.name}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <strong>Time In:</strong> {new Date(session.timeIn).toLocaleString()}
-              </p>
-              <div className="my-4">
-                <ElapsedTime timeIn={session.timeIn} timeOut={session.timeOut} big />
-              </div>
-              <div className="card-actions justify-between space-x-2">
-                {!session.timeOut && (
-                  <>
-                    <button
-                      onClick={handleDeclineClick(session)}
-                      className="btn bg-yellow-500 hover:bg-yellow-600 text-white"
-                    >
-                      Decline
-                    </button>
-                    <button
-                      onClick={handleEndSessionClick(session.id, session.admission.serviceUser.name)}
-                      className="btn bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      End Session
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Confirmation for Ending All One-to-One Sessions */}
+      <DashboardHeader
+        totalActive={totalActive}
+        oneToOneCount={oneToOneCount}
+        groupCount={groupCount}
+        sortOrder={sortOrder}
+        onToggleSort={toggleSortOrder}
+        onEndAllOneToOne={() => setShowEndAllOneToOneModal(true)}
+        onEndAllGroup={() => setShowEndAllGroupModal(true)}
+      />
+      <SessionGrid
+        oneToOneData={oneToOneData}
+        groupData={groupData}
+        onDecline={handleDeclineClick}
+        onEndSession={handleEndSessionClick}
+      />
       <ConfirmationDialog
         isOpen={showEndAllOneToOneModal}
         onClose={() => setShowEndAllOneToOneModal(false)}
@@ -355,14 +211,8 @@ const ActiveSessionsDashboard: React.FC = () => {
         title="End All One-to-One Sessions"
         message={`Are you sure you want to end all ${oneToOneCount} active one-to-one sessions? This action cannot be undone.`}
         isPending={endAllOneToOneMutation.isPending}
-        icon={
-          <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        }
+        icon={<svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
       />
-
-      {/* Confirmation for Ending All Group Sessions */}
       <ConfirmationDialog
         isOpen={showEndAllGroupModal}
         onClose={() => setShowEndAllGroupModal(false)}
@@ -370,14 +220,8 @@ const ActiveSessionsDashboard: React.FC = () => {
         title="End All Group Sessions"
         message={`Are you sure you want to end all ${groupCount} active group sessions? This action cannot be undone.`}
         isPending={endAllGroupMutation.isPending}
-        icon={
-          <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        }
+        icon={<svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
       />
-
-      {/* Confirmation for Ending Individual One-to-One Session */}
       {endingSession && (
         <ConfirmationDialog
           isOpen={isEndSessionModalOpen}
@@ -386,27 +230,13 @@ const ActiveSessionsDashboard: React.FC = () => {
           title="End Session"
           message={`Are you sure you want to end the session for ${endingSession.serviceUserName}? This action cannot be undone.`}
           isPending={endSessionMutation.isPending}
-          icon={
-            <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
+          icon={<svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
         />
       )}
-
-      {/* DeclineSessionModal with Headless UI */}
       {decliningSession && (
         <Transition appear show={isDeclineModalOpen} as={React.Fragment}>
           <Dialog as="div" className="relative z-50" onClose={handleCloseDeclineModal}>
-            <Transition.Child
-              as={React.Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0"
-              enterTo="opacity-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100"
-              leaveTo="opacity-0"
-            >
+            <Transition.Child as={React.Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
               <div className="fixed inset-0 bg-black bg-opacity-25" />
             </Transition.Child>
             <div className="fixed inset-0 overflow-y-auto">
