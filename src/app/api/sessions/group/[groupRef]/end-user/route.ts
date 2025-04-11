@@ -5,7 +5,7 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus, SessionType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: { groupRef: string } };
+type Params = { params: Promise <{ groupRef: string }> };
 
 const log = (message: string, data?: any) =>
   console.log(`[API:SESSIONS/GROUP/END-USER] ${message}`, data ? JSON.stringify(data, null, 2) : '');
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const { groupRef } = params;
+  const { groupRef } = await params;
 
   if (!groupRef || typeof groupRef !== 'string') {
     log('Invalid groupRef', { groupRef });
