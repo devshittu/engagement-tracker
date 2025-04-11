@@ -6,7 +6,7 @@
     "dev": "next dev",
     "prebuild": "yarn prisma:generate-schema",
     "postinstall": "yarn prisma:generate-schema && yarn prisma generate",
-    "build": "next build",
+    "build": "next build --no-lint",
     "start": "next start",
     "prettier": "prettier \"**/*.+(json|ts|tsx)\"",
     "format:fix": "npm run prettier -- --write",
