@@ -1,107 +1,251 @@
 // src/app/api/activities/route.ts
 
+// import { NextRequest, NextResponse } from 'next/server';
+// import { prisma } from '@/lib/prisma';
+// import { supabase } from '@/lib/supabase';
+// import { Activity } from '@/features/activities/types';
+
+// export async function GET(request: NextRequest) {
+//   try {
+//     const authHeader = request.headers.get('Authorization');
+//     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+//       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//     }
+
+//     const token = authHeader.split(' ')[1];
+//     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+//     if (userError || !user) {
+//       console.log('API: Failed to authenticate user:', userError?.message);
+//       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//     }
+
+//     const { data: userProfile, error: profileError } = await supabase
+//       .from('users')
+//       .select('id, email, departmentId, roles (id, name, level)')
+//       .eq('id', user.id)
+//       .single();
+
+//     if (profileError || !userProfile) {
+//       console.log('API: Failed to fetch user profile:', profileError?.message);
+//       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//     }
+
+//     const searchParams = request.nextUrl.searchParams;
+//     const page = parseInt(searchParams.get('page') || '1');
+//     const pageSize = parseInt(searchParams.get('pageSize') || '20');
+//     const departmentId = searchParams.get('departmentId')
+//       ? parseInt(searchParams.get('departmentId')!)
+//       : undefined;
+
+//     if (userProfile.roles.length === 0) {
+//       console.log('API: User has no roles assigned');
+//       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+//     }
+
+//     const userRoleLevel = userProfile.roles[0].level;
+//     const whereClause: any = {};
+
+//     // If user role level is less than 3, filter by their department
+//     if (userRoleLevel < 3) {
+//       whereClause.departmentId = userProfile.departmentId;
+//     } else if (departmentId) {
+//       // For users with role.level >= 4, allow filtering by selected department
+//       whereClause.departmentId = departmentId;
+//     }
+
+//     const total = await prisma.activity.count({ where: whereClause });
+//     const activities = await prisma.activity.findMany({
+//       where: whereClause,
+//       include: { department: true },
+//       skip: (page - 1) * pageSize,
+//       take: pageSize,
+//     });
+
+//     const serializedActivities = activities.map((activity) => ({
+//       ...activity,
+//       createdAt: activity.createdAt.toISOString(),
+//       updatedAt: activity.updatedAt ? activity.updatedAt.toISOString() : null,
+//     }));
+
+//     return NextResponse.json(
+//       { activities: serializedActivities, total },
+//       { status: 200 }
+//     );
+//   } catch (error: unknown) {
+//     console.error('Error fetching activities:', error);
+//     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+//   }
+// }
+
+// export async function POST(request: NextRequest) {
+//   try {
+//     const authHeader = request.headers.get('Authorization');
+//     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+//       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//     }
+
+//     const token = authHeader.split(' ')[1];
+//     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+//     if (userError || !user) {
+//       console.log('API: Failed to authenticate user:', userError?.message);
+//       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//     }
+
+//     const { data: userProfile, error: profileError } = await supabase
+//       .from('users')
+//       .select('id, email, departmentId, roles (id, name, level)')
+//       .eq('id', user.id)
+//       .single();
+
+//     if (profileError || !userProfile) {
+//       console.log('API: Failed to fetch user profile:', profileError?.message);
+//       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//     }
+
+//     const body: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'> = await request.json();
+//     if (!body.name) {
+//       return NextResponse.json({ error: 'Activity name is required' }, { status: 400 });
+//     }
+
+//     if (userProfile.roles.length === 0) {
+//       console.log('API: User has no roles assigned');
+//       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+//     }
+
+//     const userRoleLevel = userProfile.roles[0].level;
+//     const departmentId = body.departmentId ?? userProfile.departmentId;
+
+//     // Role-based access control: Ensure user can create activities in the specified department
+//     if (userRoleLevel < 3 && departmentId !== userProfile.departmentId) {
+//       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+//     }
+
+//     const newActivity = await prisma.activity.create({
+//       data: {
+//         name: body.name,
+//         description: body.description,
+//         departmentId: departmentId,
+//         createdAt: new Date(),
+//       },
+//       include: { department: true },
+//     });
+
+//     return NextResponse.json(newActivity, { status: 201 });
+//   } catch (error: unknown) {
+//     console.error('Error creating activity:', error);
+//     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+//   }
+// }
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { CreateActivityInput } from '@/features/activities/types';
+import { authenticateRequest } from '@/lib/authMiddleware';
+import { Prisma } from '@prisma/client';
+import { Activity } from '@/features/activities/types';
 
-export async function GET(request: NextRequest) {
+const log = (message: string, data?: any) =>
+  console.log(
+    `[API:ACTIVITIES] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
+
+export async function GET(req: NextRequest) {
+  const authResult = await authenticateRequest(req, 3, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const { userProfile } = authResult;
+  const searchParams = req.nextUrl.searchParams;
+  const page = parseInt(searchParams.get('page') || '1');
+  const pageSize = parseInt(searchParams.get('pageSize') || '20');
+  const departmentId = searchParams.get('departmentId')
+    ? parseInt(searchParams.get('departmentId')!)
+    : undefined;
+
   try {
-    const userHeader = request.headers.get('x-supabase-user');
-    if (!userHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userRoleLevel = userProfile.roles[0].level;
+    const whereClause: any = {};
 
-    const user = JSON.parse(userHeader);
-    const userRoleLevel = user.roles?.level ?? 0;
-    const userDepartmentId = user.departmentId;
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') ?? '1');
-    const pageSize = parseInt(searchParams.get('pageSize') ?? '20');
-    const departmentId = searchParams.get('departmentId')
-      ? parseInt(searchParams.get('departmentId')!)
-      : undefined;
-
-    const skip = (page - 1) * pageSize;
-
-    let where: any = {};
-
-    if (userRoleLevel < 3 && userDepartmentId) {
-      where = {
-        OR: [{ departmentId: userDepartmentId }, { departmentId: null }],
-      };
+    if (userRoleLevel < 3) {
+      whereClause.departmentId = userProfile.departmentId;
     } else if (departmentId) {
-      where = {
-        OR: [{ departmentId }, { departmentId: null }],
-      };
+      whereClause.departmentId = departmentId;
     }
 
-    const [activities, total] = await Promise.all([
-      prisma.activity.findMany({
-        where,
-        include: { department: true },
-        skip,
-        take: pageSize,
-        orderBy: { name: 'asc' },
-      }),
-      prisma.activity.count({ where }),
-    ]);
+    log('Fetching activities', { page, pageSize, whereClause });
+    const total = await prisma.activity.count({ where: whereClause });
+    const activities = await prisma.activity.findMany({
+      where: whereClause,
+      include: { department: true },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
 
-    return NextResponse.json({ activities, total }, { status: 200 });
+    const serializedActivities = activities.map((activity) => ({
+      ...activity,
+      createdAt: activity.createdAt.toISOString(),
+      updatedAt: activity.updatedAt ? activity.updatedAt.toISOString() : null,
+    }));
+
+    log('Activities fetched successfully', { count: activities.length });
+    return NextResponse.json({ activities: serializedActivities, total });
   } catch (error: unknown) {
-    console.error('Error fetching activities:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 },
-    );
+    log('Failed to fetch activities', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
+  const authResult = await authenticateRequest(req, 3, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const { userProfile } = authResult;
+
+  let body: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'> = { name: '', description: '', departmentId: 0, department: null };
   try {
-    const userHeader = request.headers.get('x-supabase-user');
-    if (!userHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    body = await req.json();
+    log('Creating activity', { body });
 
-    const user = JSON.parse(userHeader);
-    const userRoleLevel = user.roles?.level ?? 0;
-    const userDepartmentId = user.departmentId;
-
-    const body: CreateActivityInput = await request.json();
     if (!body.name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+      log('Activity name is required');
+      return NextResponse.json({ error: 'Activity name is required' }, { status: 400 });
     }
 
-    let departmentId = body.departmentId;
-    if (userRoleLevel <= 3) {
-      // Restrict departmentId to user's department or null
-      if (departmentId && departmentId !== userDepartmentId) {
-        return NextResponse.json(
-          { error: 'Unauthorized to create activity for this department' },
-          { status: 403 },
-        );
-      }
+    const userRoleLevel = userProfile.roles[0].level;
+    const departmentId = body.departmentId ?? userProfile.departmentId;
+
+    if (userRoleLevel < 3 && departmentId !== userProfile.departmentId) {
+      log('Forbidden: User does not have permission to create in this department');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const activity = await prisma.activity.create({
+    const newActivity = await prisma.activity.create({
       data: {
         name: body.name,
-        description: body.description ?? null,
-        departmentId: departmentId ?? null,
+        description: body.description,
+        departmentId: departmentId,
         createdAt: new Date(),
       },
       include: { department: true },
     });
 
-    return NextResponse.json(activity, { status: 201 });
+    log('Activity created successfully', { id: newActivity.id });
+    return NextResponse.json(newActivity, { status: 201 });
   } catch (error: unknown) {
-    console.error('Error creating activity:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 },
-    );
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        log('Activity name already exists', { name: body?.name });
+        return NextResponse.json(
+          { error: 'Activity name already exists' },
+          { status: 409 },
+        );
+      }
+    }
+    log('Failed to create activity', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-
 // src/app/api/activities/route.ts

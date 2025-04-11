@@ -1,66 +1,41 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-
-// export async function GET(request: Request) {
-//   try {
-//     const { searchParams } = new URL(request.url);
-//     const userIdParam = searchParams.get('userId');
-
-//     if (!userIdParam) {
-//       return NextResponse.json(
-//         { error: 'Missing userId' },
-//         { status: 400 }
-//       );
-//     }
-
-//     const userId = parseInt(userIdParam, 10);
-//     if (isNaN(userId)) {
-//       return NextResponse.json(
-//         { error: 'Invalid userId' },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Find the latest active admission for this user
-//     const admission = await prisma.admission.findFirst({
-//       where: {
-//         serviceUserId: userId,
-//         dischargeDate: null, // still active
-//       },
-//       orderBy: {
-//         admissionDate: 'desc',
-//       },
-//       include: {
-//         ward: true,
-//         serviceUser: true,
-//       },
-//     });
-
-//     return NextResponse.json({ admission });
-//   } catch (error) {
-//     console.error('Failed to fetch active admission:', error);
-//     return NextResponse.json(
-//       { error: 'Failed to fetch active admission' },
-//       { status: 500 }
-//     );
-//   }
-// }
-
 // src/app/api/admissions/active/route.ts
 
-export async function GET() {
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
+
+const log = (message: string, data?: any) =>
+  console.log(
+    `[API:ADMISSIONS/ACTIVE] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
+
+export async function GET(req: NextRequest) {
+  // Step 1: Use authenticateRequest with requiredRoleLevel: 4
+  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
+    log(message, data),
+  );
+  if (authResult instanceof NextResponse) return authResult;
+
   try {
-    // Only active admissions (dischargeDate is null)
-    const admissions = await prisma.admission.findMany({
-      where: { dischargeDate: null },
-      include: { serviceUser: true },
+    log('Fetching active admissions');
+    const activeAdmissions = await prisma.admission.findMany({
+      where: {
+        dischargeDate: null,
+      },
+      include: { serviceUser: true, ward: true },
     });
-    return NextResponse.json(admissions);
-  } catch (error) {
-    console.error('Failed to fetch admissions:', error);
+
+    log('Active admissions fetched successfully', { count: activeAdmissions.length });
+    return NextResponse.json(activeAdmissions);
+  } catch (error: unknown) {
+    log('Failed to fetch active admissions', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
-      { error: 'Failed to fetch admissions' },
+      { error: 'Failed to fetch active admissions' },
       { status: 500 },
     );
   }
 }
+// src/app/api/admissions/active/route.ts

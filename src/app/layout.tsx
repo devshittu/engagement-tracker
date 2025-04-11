@@ -49,6 +49,7 @@ export default function RootLayout({
               </div>
             </main>
             <AuthNavWrapper />
+            <div id="modal-root" /> {/* Add this */}
           </div>
         </AppProvider>
       </body>

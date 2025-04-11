@@ -1,56 +1,15 @@
 // src/app/api/sessions/active/route.ts
-
-// import { NextRequest, NextResponse } from 'next/server';
-// import { prisma } from '@/lib/prisma';
-
-// export async function GET(request: NextRequest) {
-//   const userHeader = request.headers.get('x-supabase-user');
-//   if (!userHeader) {
-//     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-//   }
-
-//   try {
-//     const activeSessions = await prisma.session.findMany({
-//       where: {
-//         endDate: null,
-//       },
-//       include: {
-//         createdBy: true,
-//         serviceUser: true,
-//         groupSession: {
-//           include: {
-//             participants: {
-//               include: { serviceUser: true },
-//             },
-//           },
-//         },
-//       },
-//       orderBy: { startDate: 'asc' },
-//     });
-
-//     return NextResponse.json(activeSessions, { status: 200 });
-//   } catch (error) {
-//     console.error('Error fetching active sessions:', error);
-//     return NextResponse.json({ error: 'Failed to fetch active sessions' }, { status: 500 });
-//   }
-// }
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus, SessionType } from '@prisma/client';
 
 const log = (message: string, data?: any) =>
-  console.log(
-    `[API:SESSIONS/ACTIVE] ${message}`,
-    data ? JSON.stringify(data, null, 2) : '',
-  );
+  console.log(`[API:SESSIONS/ACTIVE] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function GET(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
   try {
     const { searchParams } = new URL(req.url);
@@ -66,7 +25,6 @@ export async function GET(req: NextRequest) {
     log('Fetching active sessions', { type, groupByGroupRef });
 
     if (groupByGroupRef && type === SessionType.GROUP) {
-      // Fetch group sessions grouped by groupRef
       const groupedSessions = await prisma.session.groupBy({
         by: ['groupRef', 'groupDescription'],
         where: whereClause,
@@ -101,8 +59,7 @@ export async function GET(req: NextRequest) {
               admission: {
                 ...session.admission,
                 admissionDate: session.admission.admissionDate.toISOString(),
-                dischargeDate:
-                  session.admission.dischargeDate?.toISOString() || null,
+                dischargeDate: session.admission.dischargeDate?.toISOString() || null,
               },
             })),
           };
@@ -114,7 +71,6 @@ export async function GET(req: NextRequest) {
       log('Grouped group sessions fetched successfully', { total });
       return NextResponse.json({ groups: groupDetails, total });
     } else {
-      // Fetch individual sessions
       const page = parseInt(searchParams.get('page') || '1', 10);
       const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
       const sortBy = searchParams.get('sortBy') || 'timeIn';
@@ -149,22 +105,15 @@ export async function GET(req: NextRequest) {
         },
       }));
 
-      log('Active sessions fetched successfully', {
-        count: sessions.length,
-        total,
-      });
+      log('Active sessions fetched successfully', { count: sessions.length, total });
       return NextResponse.json({ sessions: serialized, total, page, pageSize });
     }
-  } catch (error) {
-    log('Failed to fetch active sessions', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch active sessions' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    log('Failed to fetch active sessions', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to fetch active sessions' }, { status: 500 });
   }
 }
-
-// src/app/api/sessions/active/route.ts
-// src/app/api/sessions/route.ts
 // src/app/api/sessions/active/route.ts
 // remember that, I asked you to seperate the concerns no overloading of the route.ts file so I only need these files and they have been modified to work with the new schema

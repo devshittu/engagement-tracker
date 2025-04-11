@@ -1,3 +1,4 @@
+// src/features/Sessions/ui/SessionForm.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -184,4 +185,4 @@ const SessionForm: React.FC<SessionFormProps> = ({
 };
 
 export default SessionForm;
-// src/app/sessions/new/SessionForm.tsx
+// src/features/Sessions/ui/SessionForm.tsx

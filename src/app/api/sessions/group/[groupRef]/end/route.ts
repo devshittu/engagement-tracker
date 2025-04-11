@@ -1,24 +1,21 @@
 // src/app/api/sessions/group/[groupRef]/end/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { SessionStatus } from '@prisma/client';
+import { authenticateRequest } from '@/lib/authMiddleware';
+import { SessionStatus, SessionType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
-type Params = { params: { groupRef: string } };
+type Params = { params: Promise<{ groupRef: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(
-    `[API:SESSIONS/GROUP/END] ${message}`,
-    data ? JSON.stringify(data, null, 2) : '',
-  );
+  console.log(`[API:SESSIONS/GROUP/END] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function POST(req: NextRequest, { params }: Params) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
-  const { groupRef } = params;
+  const { groupRef } = await params;
 
   if (!groupRef || typeof groupRef !== 'string') {
     log('Invalid groupRef', { groupRef });
@@ -32,7 +29,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       where: {
         groupRef,
         type: SessionType.GROUP,
-        timeOut: null, // Only end active sessions
+        timeOut: null,
       },
     });
 
@@ -61,10 +58,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       ),
     );
 
-    log('Group session ended successfully', {
-      groupRef,
-      count: updatedSessions.length,
-    });
+    log('Group session ended successfully', { groupRef, count: updatedSessions.length });
     return NextResponse.json(
       updatedSessions.map((session) => ({
         ...session,
@@ -74,13 +68,11 @@ export async function POST(req: NextRequest, { params }: Params) {
         updatedAt: session.updatedAt?.toISOString() || null,
       })),
     );
-  } catch (error: any) {
-    log('Failed to end group session', error);
-    return NextResponse.json(
-      { error: 'Failed to end group session' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    log('Failed to end group session', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to end group session' }, { status: 500 });
   }
 }
-
 // src/app/api/sessions/group/[groupRef]/end/route.ts

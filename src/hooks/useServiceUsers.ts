@@ -1,12 +1,9 @@
-import {
-  useInfiniteQuery,
-  QueryFunctionContext,
-  UseInfiniteQueryResult,
-} from '@tanstack/react-query';
-import axios from 'axios';
+'use client';
+
+import { useInfiniteQuery, QueryFunctionContext } from '@tanstack/react-query';
+import { apiClient } from '@/lib/api-client';
 import {
   ServiceUserStatus,
-  ServiceUser,
   ServiceUsersResponse,
 } from '@/types/serviceUser';
 
@@ -16,8 +13,7 @@ type UseServiceUsersParams = {
   order: 'asc' | 'desc';
   groupByWard: boolean;
 };
-// A tuple where the first element is the query name,
-// and the second element is an object with your filter/sort properties.
+
 type ServiceUsersQueryKey = [
   'serviceUsers',
   {
@@ -36,8 +32,7 @@ export function useServiceUsers({
   sortBy,
   order,
   groupByWard,
-}: UseServiceUsersParams): UseInfiniteQueryResult<ServiceUsersResponse, Error> {
-  // Construct a typed query key.
+}: UseServiceUsersParams) {
   const queryKey: ServiceUsersQueryKey = [
     'serviceUsers',
     { statusFilter, sortBy, order, groupByWard },
@@ -51,17 +46,12 @@ export function useServiceUsers({
     number
   >({
     queryKey,
-    // The queryFn receives a typed context, including `pageParam`.
     queryFn: async (
       context: QueryFunctionContext<ServiceUsersQueryKey, number>,
     ) => {
-      // Destructure pageParam with a default of 1
-      const { pageParam = 1, queryKey } = context;
+      const { pageParam = 1 } = context;
+      const [, { statusFilter, sortBy, order, groupByWard }] = context.queryKey;
 
-      // Extract your filters/sort options from the second tuple element
-      const [, { statusFilter, sortBy, order, groupByWard }] = queryKey;
-
-      // Build the request parameters
       const params = new URLSearchParams();
       params.set('page', pageParam.toString());
       params.set('pageSize', '20');
@@ -74,16 +64,11 @@ export function useServiceUsers({
         params.set('groupByWard', 'true');
       }
 
-      // Fetch data using axios
-      const response = await axios.get<ServiceUsersResponse>(
-        `/api/serviceUsers?${params.toString()}`,
-      );
-
-      return response.data;
+      const url = `/api/service-users?${params.toString()}`;
+      const response = await apiClient.get<ServiceUsersResponse>(url);
+      return response;
     },
-    // The initial page to fetch
     initialPageParam: 1,
-    // Determine the next page param
     getNextPageParam: (lastPage) => {
       const { page, pageSize, total } = lastPage;
       const maxPage = Math.ceil(total / pageSize);

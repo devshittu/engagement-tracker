@@ -17,4 +17,4 @@ export default async function SessionsPage() {
   );
 }
 
-// src/app/sessions/page.tsx
+// src/app/(protected)/sessions/page.tsx

@@ -1,13 +1,12 @@
+// src/features/Sessions/ui/ActiveSessionsInfiniteClient.tsx
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { InView } from 'react-intersection-observer';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useActiveSessionsInfinite } from '@/features/Sessions/hooks/useActiveSessionsInfinite';
-
-import Link from 'next/link';
-import { Session } from '@/types/serviceUser';
+import { apiClient } from '@/lib/api-client';
 import ElapsedTime from './ElapsedTime';
 
 const ActiveSessionsInfiniteClient: React.FC = () => {
@@ -25,14 +24,8 @@ const ActiveSessionsInfiniteClient: React.FC = () => {
 
   const endSessionMutation = useMutation({
     mutationFn: async (sessionId: number) => {
-      const response = await fetch(`/api/sessions/${sessionId}/end`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to end session');
-      }
-      return response.json();
+      const response = await apiClient.post(`/api/sessions/${sessionId}/end`);
+      return response;
     },
     onSuccess: () => {
       toast.success('Session ended successfully!');
@@ -43,17 +36,13 @@ const ActiveSessionsInfiniteClient: React.FC = () => {
     },
   });
 
-  // Flatten pages into a single array, if needed (for a full list view).
-  const allSessions: Session[] = useMemo(
-    // @ts-ignore
+  const allSessions = useMemo(
     () => data?.pages.flatMap((page) => page.sessions) || [],
     [data],
   );
 
-  if (isLoading)
-    return <p className="text-center">Loading active sessions...</p>;
-  if (isError)
-    return <p className="text-center text-error">Error: {error?.message}</p>;
+  if (isLoading) return <p className="text-center">Loading active sessions...</p>;
+  if (isError) return <p className="text-center text-error">Error: {error?.message}</p>;
 
   return (
     <div className="container mx-auto p-4">
@@ -61,34 +50,28 @@ const ActiveSessionsInfiniteClient: React.FC = () => {
         <h1 className="text-3xl font-bold">All Active Sessions</h1>
         <div className="flex items-center space-x-4">
           <div className="badge badge-lg">
-            {/* @ts-ignore */}
             Total Active: {data?.pages[0]?.total || 0}
           </div>
-          {/* <Link href="/sessions/active" className="btn btn-primary">
-            View All
-          </Link> */}
         </div>
       </div>
 
       <div className="space-y-4">
-        {/* @ts-ignore */}
         {data?.pages.map((page, pageIndex) => (
           <React.Fragment key={pageIndex}>
-            {page.sessions.map((session: Session) => (
+            {page.sessions.map((session: any) => (
               <div key={session.id} className="card bg-base-100 shadow-md p-4">
                 <div className="card-body">
                   <h2 className="card-title text-xl">
                     {session.admission.serviceUser.name}
                   </h2>
                   <p className="text-sm">
-                    <strong>Activity:</strong> {session.activity.name}
+                    <strong>Activity:</strong> {session.activityLog.activity.name}
                   </p>
                   <p className="text-sm">
                     <strong>Ward:</strong> {session.admission.ward.name}
                   </p>
                   <p className="text-sm">
-                    <strong>Time In:</strong>{' '}
-                    {new Date(session.timeIn).toLocaleString()}
+                    <strong>Time In:</strong> {new Date(session.timeIn).toLocaleString()}
                   </p>
                   <div className="my-4">
                     <ElapsedTime

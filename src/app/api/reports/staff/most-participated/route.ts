@@ -1,14 +1,107 @@
 // src/app/api/reports/staff/most-participated/route.ts
+
+// import { NextRequest, NextResponse } from 'next/server';
+// import { prisma } from '@/lib/prisma';
+// import { getPeriodDates, log } from '@/lib/reportUtils';
+
+// export async function GET(req: NextRequest) {
+//   const userJson = req.headers.get('x-supabase-user');
+//   if (!userJson) {
+//     log('REPORTS:STAFF:MOST-PARTICIPATED', 'Unauthorized access attempt');
+//     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+//   }
+
+//   const { searchParams } = new URL(req.url);
+//   const period = (searchParams.get('period') as 'month' | 'year') || 'month';
+
+//   if (!['month', 'year'].includes(period)) {
+//     log('REPORTS:STAFF:MOST-PARTICIPATED', 'Invalid period', { period });
+//     return NextResponse.json(
+//       { error: 'Invalid period. Use month or year.' },
+//       { status: 400 },
+//     );
+//   }
+
+//   try {
+//     const { currentStart, currentEnd } = getPeriodDates(period);
+//     log('REPORTS:STAFF:MOST-PARTICIPATED', 'Fetching most participated staff', {
+//       period,
+//     });
+
+//     const sessions = await prisma.session.groupBy({
+//       by: ['facilitatedById'],
+//       _count: { id: true },
+//       where: { timeIn: { gte: currentStart, lte: currentEnd } },
+//       orderBy: { _count: { id: 'desc' } },
+//     });
+
+//     const staffIds = sessions.map((s) => s.facilitatedById);
+//     const [staffDetails, sessionDetails] = await Promise.all([
+//       prisma.user.findMany({
+//         where: { id: { in: staffIds } },
+//         select: { id: true, name: true },
+//       }),
+//       prisma.session.findMany({
+//         where: {
+//           facilitatedById: { in: staffIds },
+//           timeIn: { gte: currentStart, lte: currentEnd },
+//         },
+//         include: { admission: true },
+//       }),
+//     ]);
+
+//     const data = sessions.map((session) => {
+//       const staff = staffDetails.find((s) => s.id === session.facilitatedById);
+//       const staffSessions = sessionDetails.filter(
+//         (s) => s.facilitatedById === session.facilitatedById,
+//       );
+//       const uniqueServiceUsers = new Set(
+//         staffSessions.map((s) => s.admission.serviceUserId),
+//       ).size;
+//       return {
+//         staffId: session.facilitatedById,
+//         staffName: staff?.name || 'Unknown',
+//         sessionCount: session._count.id,
+//         uniqueServiceUsers,
+//       };
+//     });
+
+//     const top = data[0] || null;
+
+//     log('REPORTS:STAFF:MOST-PARTICIPATED', 'Most participated staff fetched', {
+//       topStaff: top?.staffName,
+//     });
+//     return NextResponse.json({
+//       period,
+//       startDate: currentStart.toISOString(),
+//       endDate: currentEnd.toISOString(),
+//       data,
+//       top,
+//     });
+//   } catch (error) {
+//     log(
+//       'REPORTS:STAFF:MOST-PARTICIPATED',
+//       'Failed to fetch most participated staff',
+//       error,
+//     );
+//     return NextResponse.json(
+//       { error: 'Failed to fetch most participated staff' },
+//       { status: 500 },
+//     );
+//   }
+// }
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getPeriodDates, log } from '@/lib/reportUtils';
+import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middleware
 
 export async function GET(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('REPORTS:STAFF:MOST-PARTICIPATED', 'Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Step 1: Replace x-supabase-user with authenticateRequest
+  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
+    log('REPORTS:STAFF:MOST-PARTICIPATED', message, data),
+  );
+  if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
   const period = (searchParams.get('period') as 'month' | 'year') || 'month';
@@ -59,7 +152,7 @@ export async function GET(req: NextRequest) {
       ).size;
       return {
         staffId: session.facilitatedById,
-        staffName: staff?.name || 'Unknown',
+        staffName: staff?.name ?? 'Unknown', // Step 2: Add fallback for null name
         sessionCount: session._count.id,
         uniqueServiceUsers,
       };
@@ -77,11 +170,13 @@ export async function GET(req: NextRequest) {
       data,
       top,
     });
-  } catch (error) {
+  } catch (error: unknown) { // Step 3: Type error as unknown
     log(
       'REPORTS:STAFF:MOST-PARTICIPATED',
       'Failed to fetch most participated staff',
-      error,
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
     );
     return NextResponse.json(
       { error: 'Failed to fetch most participated staff' },

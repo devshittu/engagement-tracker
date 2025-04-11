@@ -1,143 +1,56 @@
+// src/middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { PUBLIC_ROUTES, API_ROUTES } from '@/config/routes';
-
-// Custom headers to pass user data
-const USER_HEADER = 'x-supabase-user';
+import { supabaseAdmin } from '@/lib/supabase';
+import { PUBLIC_ROUTES } from '@/config/routes';
 
 export async function middleware(req: NextRequest) {
-  const token = req.cookies.get('supabase-auth-token')?.value;
+  const pathname = req.nextUrl.pathname;
+  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
 
-  // Check if the current path is a public route or an API route
-  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
-    req.nextUrl.pathname.startsWith(route),
-  );
-  const isApiRoute = API_ROUTES.some((route) =>
-    req.nextUrl.pathname.startsWith(route),
-  );
-
-  console.log('Middleware: Path:', req.nextUrl.pathname);
+  console.log('Middleware: Path:', pathname);
   console.log('Middleware: Is public route:', isPublicRoute);
-  console.log('Middleware: Is API route:', isApiRoute);
 
-  if (isPublicRoute && !isApiRoute) {
-    return NextResponse.next();
+  const token = req.cookies.get('sb-access-token')?.value;
+  if (!token && !isPublicRoute && !pathname.startsWith('/login') && !pathname.startsWith('/api/auth')) {
+    console.log('Middleware: No token found, redirecting to login');
+    const redirectUrl = encodeURIComponent(pathname + req.nextUrl.search || '/dashboard');
+    return NextResponse.redirect(new URL(`/login?next=${redirectUrl}`, req.url));
   }
 
-  if (!token) {
-    console.log('Middleware: No token found in cookies', {
-      path: req.nextUrl.pathname,
-    });
-    if (isApiRoute) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    // Redirect to login with the 'next' query parameter
-    const redirectUrl = req.nextUrl.pathname + req.nextUrl.search;
-    const encodedRedirect = encodeURIComponent(redirectUrl);
-    console.log('Middleware: Redirecting to login with next:', redirectUrl);
-    const loginUrl = new URL(`/login?next=${encodedRedirect}`, req.url);
-    const response = NextResponse.redirect(loginUrl);
-    const redirectTimestamp = parseInt(
-      req.cookies.get('redirect-timestamp')?.value || '0',
-      10,
-    );
-    const now = Date.now();
-    const timeSinceLastRedirect = now - redirectTimestamp;
+  let userProfile = null;
+  if (token) {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) {
+      console.log('Middleware: Invalid token', { error: error?.message });
+      if (!isPublicRoute) {
+        const redirectUrl = encodeURIComponent(pathname + req.nextUrl.search || '/dashboard');
+        return NextResponse.redirect(new URL(`/login?next=${redirectUrl}`, req.url));
+      }
+    } else {
+      const { data, error: profileError } = await supabaseAdmin
+        .from('users')
+        .select('id, email, departmentId, roles (id, name, level)')
+        .eq('id', user.id)
+        .single();
 
-    if (redirectTimestamp && timeSinceLastRedirect < 5000) {
-      console.log(
-        'Middleware: Detected redirect loop, redirecting to /login without next',
-      );
-      const response = NextResponse.redirect(new URL('/login', req.url));
-      response.cookies.set('supabase-auth-token', '', {
-        path: '/',
-        expires: new Date(0),
-      });
-      response.cookies.set('supabase-refresh-token', '', {
-        path: '/',
-        expires: new Date(0),
-      });
-      response.cookies.set('redirect-timestamp', '', {
-        path: '/',
-        expires: new Date(0),
-      });
-      return response;
+      if (profileError || !data) {
+        console.log('Middleware: Failed to fetch profile', { error: profileError?.message });
+      } else {
+        userProfile = data;
+        console.log('Middleware: User authenticated', { userId: user.id, roles: data.roles });
+      }
     }
-
-    response.cookies.set('redirect-timestamp', now.toString(), {
-      path: '/',
-      maxAge: 60,
-    });
-    return response;
   }
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    console.log('Middleware: Auth failed:', error?.message, {
-      path: req.nextUrl.pathname,
-    });
-    if (isApiRoute) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    // Redirect to login with the 'next' query parameter
-    const redirectUrl = req.nextUrl.pathname + req.nextUrl.search;
-    const encodedRedirect = encodeURIComponent(redirectUrl);
-    console.log('Middleware: Redirecting to login with next:', redirectUrl);
-    const loginUrl = new URL(`/login?next=${encodedRedirect}`, req.url);
-    const response = NextResponse.redirect(loginUrl);
-    const redirectTimestamp = parseInt(
-      req.cookies.get('redirect-timestamp')?.value || '0',
-      10,
-    );
-    const now = Date.now();
-    const timeSinceLastRedirect = now - redirectTimestamp;
-
-    if (redirectTimestamp && timeSinceLastRedirect < 5000) {
-      console.log(
-        'Middleware: Detected redirect loop, redirecting to /login without next',
-      );
-      const response = NextResponse.redirect(new URL('/login', req.url));
-      response.cookies.set('supabase-auth-token', '', {
-        path: '/',
-        expires: new Date(0),
-      });
-      response.cookies.set('supabase-refresh-token', '', {
-        path: '/',
-        expires: new Date(0),
-      });
-      response.cookies.set('redirect-timestamp', '', {
-        path: '/',
-        expires: new Date(0),
-      });
-      return response;
-    }
-
-    response.cookies.set('redirect-timestamp', now.toString(), {
-      path: '/',
-      maxAge: 60,
-    });
-    return response;
+  const response = NextResponse.next();
+  if (userProfile) {
+    response.headers.set('x-supabase-user', JSON.stringify(userProfile));
   }
 
-  console.log('Middleware: Authenticated user:', user.id, {
-    path: req.nextUrl.pathname,
-  });
-
-  // Attach user to request headers for API routes
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set(USER_HEADER, JSON.stringify(user));
-
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return response;
 }
 
 export const config = {
-  matcher: ['/(protected)/:path*', '/api/:path*'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
 // src/middleware.ts

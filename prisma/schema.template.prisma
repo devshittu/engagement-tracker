@@ -25,6 +25,29 @@ enum SessionStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
+  DECLINED // Added new status for declined sessions
+}
+
+model DeclineReason {
+  id        Int              @id @default(autoincrement())
+  name      String           @unique // e.g., "Engaged in another activity"
+  createdAt DateTime         @default(now())
+  updatedAt DateTime?        @updatedAt
+  declinedSessions DeclinedSession[] // Relation to declined sessions
+
+  @@map("decline_reasons")
+}
+
+model DeclinedSession {
+  id            Int           @id @default(autoincrement())
+  sessionId     Int           @unique // One-to-one relation with Session
+  session       Session       @relation(fields: [sessionId], references: [id])
+  declineReasonId Int
+  declineReason DeclineReason @relation(fields: [declineReasonId], references: [id])
+  description   String?       // Optional description of the decline situation
+  createdAt     DateTime      @default(now())
+
+  @@map("declined_sessions")
 }
 
 model Department {
@@ -157,6 +180,7 @@ model Session {
   cancelReason      String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime? @updatedAt
+  declinedSession   DeclinedSession? // Optional one-to-one relation with DeclinedSession
 
   @@index([groupRef])
   @@map("sessions")

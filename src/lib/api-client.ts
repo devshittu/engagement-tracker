@@ -1,5 +1,6 @@
 // src/lib/api-client.ts
-import Axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+
+import Axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { supabase } from '@/lib/supabase';
 
 const apiUrl =
@@ -7,32 +8,23 @@ const apiUrl =
     ? process.env.NEXT_SERVER_API_URL || 'http://localhost:3000'
     : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-if (!apiUrl) {
-  throw new Error('API URL is not defined');
-}
+if (!apiUrl) throw new Error('API URL is not defined');
 
 export const apiClient = Axios.create({
   baseURL: apiUrl,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true, // Ensure cookies are sent
 });
 
 apiClient.interceptors.request.use(
-  async (config: AxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
         console.error('Failed to get session:', error.message);
       } else if (session?.access_token) {
-        config.headers = {
-          ...config.headers,
-          Authorization: `Bearer ${session.access_token}`,
-        };
-        console.log('Token added to request:', session.access_token); // Debug log
+        config.headers.set('Authorization', `Bearer ${session.access_token}`);
+        console.log('Token added to request:', session.access_token);
       } else {
         console.warn('No session token available');
       }
@@ -44,27 +36,15 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response.data,
-  async (error) => {
-    const originalRequest = error.config;
+  (error) => {
     const status = error.response?.status;
-
-    if (status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const {
-        data: { session },
-        error: refreshError,
-      } = await supabase.auth.refreshSession();
-      if (refreshError || !session) {
-        console.error('Token refresh failed:', refreshError?.message);
-        if (typeof window !== 'undefined') {
-          const currentPath = window.location.pathname + window.location.search;
-          const encodedRedirect = encodeURIComponent(currentPath);
-          window.location.href = `/login?next=${encodedRedirect}`;
-        }
-        return Promise.reject(error);
+    if (status === 401) {
+      console.error('Unauthorized request, redirecting to login');
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname + window.location.search;
+        const encodedRedirect = encodeURIComponent(currentPath || '/dashboard');
+        window.location.href = `/login?next=${encodedRedirect}`;
       }
-      originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
-      return apiClient(originalRequest);
     }
     return Promise.reject(error);
   },

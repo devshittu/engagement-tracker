@@ -22,16 +22,26 @@ export type Activity = {
   createdAt?: string;
   updatedAt?: string | null;
 };
+export type ActivityContinuityLog = {
+  id: number;
+  activity: Activity;
+  startDate: string;
+  discontinuedDate?: string | null;
+  reason?: string | null;
+  duration?: number | null;
+};
+
 export type Session = {
   id: number;
   admissionId: number;
-  activityId: number;
   timeIn: string;
   timeOut?: string | null;
-
-  // The relations from your schema
+  type: 'GROUP' | 'ONE_TO_ONE';
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  groupRef?: string | null;
+  groupDescription?: string | null;
   admission: Admission;
-  activity: Activity;
+  activityLog: ActivityContinuityLog; // Updated to match schema
 };
 
 export type ServiceUsersResponse = {

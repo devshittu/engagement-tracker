@@ -1,12 +1,23 @@
 // src/app/api/reports/service-users/[serviceUserId]/engagement/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
 import { format, subYears } from 'date-fns';
+
+const log = (message: string, data?: any) =>
+  console.log(
+    `[REPORTS:SERVICE-USERS:ENGAGEMENT] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ serviceUserId: string }> },
 ) {
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
+
   const { serviceUserId } = await context.params;
   const id = parseInt(serviceUserId);
 
@@ -20,6 +31,7 @@ export async function GET(
   });
 
   if (!serviceUser) {
+    log('Service user not found', { serviceUserId });
     return NextResponse.json(
       { error: 'Service user not found' },
       { status: 404 },
@@ -45,6 +57,7 @@ export async function GET(
   });
 
   if (admissions.length === 0) {
+    log('No admissions found', { serviceUserId });
     return NextResponse.json({ error: 'No admissions found' }, { status: 404 });
   }
 
@@ -54,8 +67,8 @@ export async function GET(
       period === 'week'
         ? 'yyyy-ww'
         : period === 'month'
-          ? 'yyyy-MM'
-          : 'yyyy-MM-dd';
+        ? 'yyyy-MM'
+        : 'yyyy-MM-dd';
     return { date: format(session.timeIn, dateFormat), sessionCount: 1 };
   });
 
@@ -113,9 +126,9 @@ export async function GET(
     admissionId: admissionId || undefined,
   };
 
+  log('Engagement data fetched', { serviceUserId });
   return NextResponse.json(response);
 }
-
 // Description: Tracks a service user’s session participation from admission to discharge, showing group vs. one-to-one sessions over time.
 // Notes:
 // Data: Provides daily engagement points for a Stacked Area Chart (group vs. one-to-one over time).

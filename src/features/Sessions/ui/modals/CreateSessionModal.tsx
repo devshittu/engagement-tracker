@@ -3,23 +3,13 @@
 import React from 'react';
 import Modal from '@/components/Modal/Modal';
 import SessionForm from '@/features/Sessions/ui/SessionForm';
-
-type Admission = {
-  id: number;
-  serviceUser: { id: number; name: string };
-};
-
-type Activity = {
-  id: number;
-  name: string;
-};
+import { useActiveAdmissions } from '@/features/admissions/hooks/useActiveAdmissions';
+import { useActiveActivities } from '@/features/activities/hooks/useActiveActivities';
 
 type CreateSessionModalProps = {
   isOpen: boolean;
   onClose: () => void;
   preselectedUserId?: number;
-  admissions: Admission[];
-  activities: Activity[];
   onSessionCreated?: () => void;
 };
 
@@ -27,10 +17,15 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
   isOpen,
   onClose,
   preselectedUserId,
-  admissions,
-  activities,
   onSessionCreated,
 }) => {
+  const { data: admissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
+  const { data: activities = [], isLoading: isActivitiesLoading } = useActiveActivities();
+
+  if (isAdmissionsLoading || isActivitiesLoading) {
+    return <div>Loading admissions and activities...</div>;
+  }
+
   return (
     <Modal show={isOpen} handleClose={onClose} ariaLabel="Create Session">
       <div className="p-4 flex justify-between items-center bg-teal-500 text-white rounded-t-lg">
@@ -43,7 +38,7 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
         <SessionForm
           preselectedUserId={preselectedUserId}
           admissions={admissions}
-          activities={activities.map((a) => ({ id: a.id, name: a.name }))} // Ensure only active activities are passed (assuming activities are pre-filtered)
+          activities={activities}
           onSessionCreated={onSessionCreated}
           onClose={onClose}
         />
@@ -53,3 +48,4 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
 };
 
 export default CreateSessionModal;
+// src/features/Sessions/ui/CreateSessionModal.tsx

@@ -1,3 +1,4 @@
+// src/features/Sessions/ui/GroupSessionModal.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -6,18 +7,9 @@ import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'react-toastify';
 import { useDebounce } from '@/hooks/useDebounce';
-
-type Admission = {
-  id: number;
-  serviceUser: { id: number; name: string };
-};
-
-type ActivityLog = {
-  id: number;
-  name: string;
-  startDate: string;
-  duration?: number;
-};
+import { useActiveActivities } from '@/features/activities/hooks/useActiveActivities';
+import { useActiveAdmissions } from '@/features/admissions/hooks/useActiveAdmissions';
+import { logger } from '@/lib/logger';
 
 type ServiceUserOption = {
   id: number;
@@ -29,8 +21,6 @@ type ServiceUserOption = {
 type GroupSessionModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  admissions: Admission[];
-  activities: ActivityLog[];
   onSessionCreated: () => void;
   existingSessionId?: number;
 };
@@ -38,13 +28,14 @@ type GroupSessionModalProps = {
 const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   isOpen,
   onClose,
-  admissions,
-  activities,
   onSessionCreated,
   existingSessionId,
 }) => {
-  const [selectedActivityId, setSelectedActivityId] = useState<number | ''>(
-    existingSessionId ? activities[0]?.id : '',
+  const { data: activities = [], isLoading: isActivitiesLoading } = useActiveActivities();
+  const { data: admissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
+
+  const [selectedActivityLogId, setSelectedActivityLogId] = useState<number | ''>(
+    existingSessionId && activities.length > 0 ? activities[0].id : '',
   );
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedUsers, setSelectedUsers] = useState<ServiceUserOption[]>([]);
@@ -57,14 +48,13 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   useEffect(() => {
     const fetchUserOptions = async () => {
       if (debouncedSearchQuery) {
+        logger.debug('Fetching user options', { query: debouncedSearchQuery });
         try {
           const response = await apiClient.get('/api/service-users/search', {
             params: { q: debouncedSearchQuery, includeDischarged: 'false' },
           });
           const admittedUsers = response.serviceUsers
-            .filter((user: any) =>
-              user.admissions.some((adm: any) => !adm.dischargeDate),
-            )
+            .filter((user: any) => user.admissions.some((adm: any) => !adm.dischargeDate))
             .map((user: any) => ({
               id: user.id,
               name: user.name,
@@ -73,16 +63,17 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
             }));
           setUserOptions(
             admittedUsers.filter(
-              (u: ServiceUserOption) =>
-                !selectedUsers.some((su) => su.id === u.id),
+              (u: ServiceUserOption) => !selectedUsers.some((su) => su.id === u.id),
             ),
           );
+          logger.info('User options fetched', { count: admittedUsers.length });
         } catch (error) {
-          console.error('Failed to fetch user options:', error);
+          logger.error('Failed to fetch user options', { error });
           toast.error('Failed to load service users. Please try again.');
         }
       } else {
         setUserOptions([]);
+        logger.debug('Search query cleared, resetting user options');
       }
     };
     fetchUserOptions();
@@ -90,46 +81,51 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
 
   const checkExistingSession = useCallback(async () => {
     if (existingSessionId) {
+      logger.debug('Checking existing session by ID', { existingSessionId });
       try {
-        const response = await apiClient.get(
-          `/api/sessions/${existingSessionId}`,
-        );
+        const response = await apiClient.get(`/api/sessions/${existingSessionId}`);
         setExistingSession(response);
+        logger.info('Existing session fetched', { sessionId: existingSessionId });
       } catch (error) {
-        console.error('Failed to fetch existing session:', error);
+        logger.error('Failed to fetch existing session', { error });
         toast.error('Failed to check existing session. Please try again.');
       }
-    } else if (selectedActivityId && !existingSessionId) {
+    } else if (selectedActivityLogId) {
+      logger.debug('Checking for active sessions by activityLogId', { selectedActivityLogId });
       try {
         const response = await apiClient.get('/api/group-sessions', {
-          params: { type: 'GROUP', activityLogId: selectedActivityId },
+          params: { type: 'GROUP', activityLogId: selectedActivityLogId },
         });
         const activeSessions = response.sessions;
         if (activeSessions.length > 0) {
           setExistingSession(activeSessions[0]);
+          logger.info('Found existing active session', { groupRef: activeSessions[0].groupRef });
         } else {
           setExistingSession(null);
+          logger.info('No existing active session found');
         }
       } catch (error) {
-        console.error('Failed to check for active sessions:', error);
+        logger.error('Failed to check for active sessions', { error });
         toast.error('Failed to check for active sessions. Please try again.');
       }
     }
-  }, [selectedActivityId, existingSessionId]);
+  }, [selectedActivityLogId, existingSessionId]);
 
   useEffect(() => {
-    if (selectedActivityId || existingSessionId) {
+    if (selectedActivityLogId || existingSessionId) {
       checkExistingSession();
     }
   }, [checkExistingSession]);
 
   const handleAddUser = (user: ServiceUserOption) => {
+    logger.debug('Adding user to selection', { userId: user.id, name: user.name });
     setSelectedUsers((prev) => [...prev, user]);
     setSearchQuery('');
     setUserOptions((prev) => prev.filter((u) => u.id !== user.id));
   };
 
   const handleRemoveUser = (userId: number) => {
+    logger.debug('Removing user from selection', { userId });
     const removedUser = selectedUsers.find((u) => u.id === userId);
     setSelectedUsers((prev) => prev.filter((u) => u.id !== userId));
     if (removedUser) {
@@ -138,82 +134,94 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   };
 
   const startSession = async () => {
-    if (!selectedActivityId) {
+    if (!selectedActivityLogId) {
+      logger.warn('No activity selected');
       toast.error('Please select an activity.');
       return;
     }
     if (selectedUsers.length === 0) {
+      logger.warn('No users selected');
       toast.error('Please select at least one service user.');
       return;
     }
 
     setLoading(true);
+    logger.info('Starting group session', { selectedActivityLogId, userCount: selectedUsers.length });
     try {
       const admissionIds = selectedUsers
         .map((u) => admissions.find((a) => a.serviceUser.id === u.id)?.id)
         .filter((id): id is number => id !== undefined);
 
       if (admissionIds.length !== selectedUsers.length) {
+        logger.error('Mismatch in admission IDs', {
+          selectedUsers: selectedUsers.length,
+          validAdmissions: admissionIds.length,
+        });
         toast.error('One or more selected users do not have valid admissions.');
         return;
       }
 
       if (existingSession && !existingSessionId) {
+        logger.debug('Prompting to add users to existing session', { groupRef: existingSession.groupRef });
         const confirmAdd = window.confirm(
-          `An active group session for "${activities.find((a) => a.id === selectedActivityId)?.name}" is ongoing. Do you want to add these users to it?`,
+          `An active group session for "${activities.find((a) => a.id === selectedActivityLogId)?.name}" is ongoing. Do you want to add these users to it?`,
         );
         if (confirmAdd) {
           await Promise.all(
             admissionIds.map((admissionId) =>
-              apiClient.post(
-                `/api/sessions/group/${existingSession.groupRef}/join`,
-                {
-                  admissionId,
-                },
-              ),
+              apiClient.post(`/api/sessions/group/${existingSession.groupRef}/join`, {
+                admissionId,
+              }),
             ),
           );
+          logger.info('Users added to existing group session', { admissionIds });
           toast.success('Users added to existing group session successfully!');
         } else {
+          logger.info('User canceled adding to existing session');
           return;
         }
       } else if (existingSessionId) {
+        logger.debug('Adding users to specified existing session', { existingSessionId });
         await Promise.all(
           admissionIds.map((admissionId) =>
-            apiClient.post(
-              `/api/sessions/group/${existingSession.groupRef}/join`,
-              {
-                admissionId,
-              },
-            ),
+            apiClient.post(`/api/sessions/group/${existingSession.groupRef}/join`, {
+              admissionId,
+            }),
           ),
         );
+        logger.info('Users added to group session', { admissionIds });
         toast.success('Users added to group session successfully!');
       } else {
-        const activity = activities.find((a) => a.id === selectedActivityId);
         const payload = {
           type: 'GROUP',
-          activityLogId: Number(selectedActivityId),
+          activityLogId: Number(selectedActivityLogId),
           admissionIds,
-          duration: activity?.duration,
         };
-        console.log('Creating group session with payload:', payload);
+        logger.debug('Submitting new group session payload', { payload });
         const response = await apiClient.post('/api/group-sessions', payload);
-        console.log('Group session creation response:', response);
+        logger.info('Group session created', { response: response.sessions });
         toast.success('Group session created successfully!');
       }
       onSessionCreated();
       onClose();
     } catch (error: any) {
-      console.error('Failed to start group session:', error);
+      logger.error('Failed to start group session', {
+        error: error.message,
+        response: error.response?.data,
+      });
       toast.error(
-        error.response?.data?.error ||
-          'Failed to start group session. Please try again.',
+        error.response?.data?.error || 'Failed to start group session. Please try again.',
       );
     } finally {
       setLoading(false);
+      logger.debug('Session creation attempt completed', { loading: false });
     }
   };
+
+  if (isActivitiesLoading || isAdmissionsLoading) {
+    logger.debug('Loading activities or admissions');
+    return <div>Loading activities and admissions...</div>;
+  }
 
   return (
     <Modal show={isOpen} handleClose={onClose} ariaLabel="Create Group Session">
@@ -226,9 +234,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
       >
         <div className="flex justify-between items-center bg-green-500 text-white p-4 rounded-t-xl">
           <h3 className="text-xl font-bold">
-            {existingSessionId
-              ? 'Add Users to Group Session'
-              : 'Start a Group Session'}
+            {existingSessionId ? 'Add Users to Group Session' : 'Start a Group Session'}
           </h3>
           <button
             onClick={onClose}
@@ -254,23 +260,26 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         <div className="p-6">
           <div className="space-y-6">
             <div className="form-control">
-              <label className="label" htmlFor="activityId">
+              <label className="label" htmlFor="activityLogId">
                 <span className="label-text font-medium text-gray-900 dark:text-gray-100">
                   Select Activity
                 </span>
               </label>
               <select
-                id="activityId"
-                value={selectedActivityId}
-                onChange={(e) => setSelectedActivityId(Number(e.target.value))}
+                id="activityLogId"
+                value={selectedActivityLogId}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setSelectedActivityLogId(value);
+                  logger.debug('Activity selected', { activityLogId: value });
+                }}
                 className="select select-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-500 transition-all duration-300"
                 disabled={!!existingSessionId}
               >
                 <option value="">Choose an Activity</option>
                 {activities.map((activity) => (
                   <option key={activity.id} value={activity.id}>
-                    {activity.name} (Duration: {activity.duration || 'N/A'}{' '}
-                    mins)
+                    {activity.name}
                   </option>
                 ))}
               </select>
@@ -295,6 +304,13 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                     <li
                       key={user.id}
                       onClick={() => handleAddUser(user)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleAddUser(user);
+                        }
+                      }}
+                      tabIndex={0}
                       className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center"
                     >
                       <span className="font-medium">{user.name}</span>
@@ -352,3 +368,4 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
 };
 
 export default GroupSessionModal;
+// src/features/Sessions/ui/GroupSessionModal.tsx

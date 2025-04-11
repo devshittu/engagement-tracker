@@ -1,17 +1,18 @@
 // src/app/api/sessions/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { authenticateRequest } from '@/lib/authMiddleware';
 
-export async function GET(request: NextRequest) {
-  const userHeader = request.headers.get('x-supabase-user');
-  if (!userHeader) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+const log = (message: string, data?: any) =>
+  console.log(`[API:SESSIONS] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
-  const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '20');
+export async function GET(req: NextRequest) {
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
   const skip = (page - 1) * pageSize;
 
   try {
@@ -19,102 +20,87 @@ export async function GET(request: NextRequest) {
       prisma.session.findMany({
         skip,
         take: pageSize,
-        orderBy: { startDate: 'desc' },
+        orderBy: { timeIn: 'desc' },
         include: {
-          createdBy: true,
-          serviceUser: true,
-          groupSession: {
-            include: {
-              participants: {
-                include: { serviceUser: true },
-              },
-            },
-          },
+          facilitatedBy: true,
+          admission: { include: { serviceUser: true } },
+          activityLog: { include: { activity: true } }, // Include activityLog and activity
         },
       }),
       prisma.session.count(),
     ]);
 
-    return NextResponse.json({ sessions, total }, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching sessions:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch sessions' },
-      { status: 500 },
-    );
+    const serialized = sessions.map((session) => ({
+      ...session,
+      timeIn: session.timeIn.toISOString(),
+      timeOut: session.timeOut?.toISOString() || null,
+      createdAt: session.createdAt.toISOString(),
+      updatedAt: session.updatedAt?.toISOString() || null,
+      activityLog: {
+        ...session.activityLog,
+        startDate: session.activityLog.startDate.toISOString(),
+        discontinuedDate: session.activityLog.discontinuedDate?.toISOString() || null,
+      },
+    }));
+
+    log('Sessions fetched successfully', { count: sessions.length, total });
+    return NextResponse.json({ sessions: serialized, total, page, pageSize }, { status: 200 });
+  } catch (error: unknown) {
+    log('Failed to fetch sessions', { error: error instanceof Error ? error.message : String(error) });
+    return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
-  const userHeader = request.headers.get('x-supabase-user');
-  if (!userHeader) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+export async function POST(req: NextRequest) {
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
-  const user = JSON.parse(userHeader);
-  const userId = user.id;
+  const { userId } = authResult;
+  const body = await req.json();
+  const { type, admissionId, activityLogId, groupRef } = body;
 
-  const body = await request.json();
-  const { type, serviceUserId, groupRef, participants } = body;
-
-  if (
-    !type ||
-    (type === 'ONE_TO_ONE' && !serviceUserId) ||
-    (type === 'GROUP' && !groupRef)
-  ) {
+  if (!type || (type === 'ONE_TO_ONE' && (!admissionId || !activityLogId)) || (type === 'GROUP' && !groupRef)) {
+    log('Invalid input', { type, admissionId, activityLogId, groupRef });
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 
   try {
-    const sessionData: any = {
+    const sessionData = {
       type,
-      createdById: userId,
-      startDate: new Date(),
-      endDate: null,
+      facilitatedById: userId,
+      timeIn: new Date(),
+      timeOut: null,
+      admissionId: type === 'ONE_TO_ONE' ? admissionId : undefined,
+      activityLogId: type === 'ONE_TO_ONE' ? activityLogId : undefined,
+      groupRef: type === 'GROUP' ? groupRef : undefined,
     };
 
-    if (type === 'ONE_TO_ONE') {
-      sessionData.serviceUserId = serviceUserId;
-    }
-
-    const session = await prisma.$transaction(async (tx) => {
-      const newSession = await tx.session.create({
-        data: sessionData,
-        include: { createdBy: true, serviceUser: true },
-      });
-
-      if (type === 'GROUP') {
-        const groupSession = await tx.groupSession.create({
-          data: {
-            sessionId: newSession.id,
-            groupRef,
-            participants: {
-              create: participants?.map((participantId: string) => ({
-                serviceUserId: participantId,
-              })),
-            },
-          },
-          include: {
-            participants: {
-              include: { serviceUser: true },
-            },
-          },
-        });
-        return { ...newSession, groupSession };
-      }
-
-      return newSession;
+    const session = await prisma.session.create({
+      data: sessionData,
+      include: {
+        facilitatedBy: true,
+        admission: { include: { serviceUser: true } },
+        activityLog: { include: { activity: true } },
+      },
     });
 
-    return NextResponse.json(session, { status: 201 });
-  } catch (error) {
-    console.error('Error creating session:', error);
-    return NextResponse.json(
-      { error: 'Failed to create session' },
-      { status: 500 },
-    );
+    log('Session created successfully', { id: session.id });
+    return NextResponse.json({
+      ...session,
+      timeIn: session.timeIn.toISOString(),
+      timeOut: session.timeOut?.toISOString() || null,
+      createdAt: session.createdAt.toISOString(),
+      updatedAt: session.updatedAt?.toISOString() || null,
+      activityLog: {
+        ...session.activityLog,
+        startDate: session.activityLog.startDate.toISOString(),
+        discontinuedDate: session.activityLog.discontinuedDate?.toISOString() || null,
+      },
+    }, { status: 201 });
+  } catch (error: unknown) {
+    log('Failed to create session', { error: error instanceof Error ? error.message : String(error) });
+    return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
   }
 }
 
-// Additional methods (PUT, DELETE) can be added as needed
 // src/app/api/sessions/route.ts

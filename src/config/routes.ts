@@ -7,7 +7,7 @@ export const PROTECTED_ROUTES = [
   '/sessions',
 ];
 
-export const PUBLIC_ROUTES = ['/login', '/feel', '/'];
+export const PUBLIC_ROUTES = ['/login', '/feel', '/', '/api/auth/login', '/api/auth/me', '/api/auth/logout'];
 
 export const API_ROUTES = ['/api'];
 

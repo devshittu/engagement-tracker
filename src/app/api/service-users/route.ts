@@ -1,31 +1,31 @@
-// src/app/api/serviceUsers/route.ts
+// src/app/api/service-users/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { log } from '@/lib/reportUtils';
-import { ServiceUsersResponse } from '@/types/serviceUser';
+import { authenticateRequest } from '@/lib/authMiddleware';
+import { Prisma } from '@prisma/client';
+
+const log = (message: string, data?: any) =>
+  console.log(`[API:SERVICE-USERS] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 
 export async function GET(req: NextRequest) {
-  const userJson = req.headers.get('x-supabase-user');
-  if (!userJson) {
-    log('SERVICE-USERS:LIST', 'Unauthorized access attempt');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authResult = await authenticateRequest(req, 0, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '20');
-  const status =
+  const page: number = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize: number = parseInt(searchParams.get('pageSize') || '20', 10);
+  const status: 'admitted' | 'discharged' | 'all' =
     (searchParams.get('status') as 'admitted' | 'discharged' | 'all') || 'all';
-  const sortBy = searchParams.get('sortBy') || 'name';
-  const order = searchParams.get('order') === 'desc' ? 'desc' : 'asc';
-  const groupByWard = searchParams.get('groupByWard') === 'true';
+  const sortBy: string = searchParams.get('sortBy') || 'name';
+  const order: 'asc' | 'desc' = searchParams.get('order') === 'desc' ? 'desc' : 'asc';
+  const groupByWard: boolean = searchParams.get('groupByWard') === 'true';
+  const skip: number = (page - 1) * pageSize;
 
   try {
-    log('SERVICE-USERS:LIST', 'Fetching service users', { page, status });
+    log('Fetching service users', { page, status });
 
-    const skip = (page - 1) * pageSize;
-
-    const whereClause: any = {};
+    const whereClause: Prisma.ServiceUserWhereInput = {};
     if (status !== 'all') {
       whereClause.admissions = {
         some: {
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
         admissions: {
           include: { ward: true },
           orderBy: { admissionDate: 'desc' },
-          take: 1, // Only latest admission for status check
+          take: 1,
         },
       },
       orderBy: { [sortBy]: order },
@@ -50,10 +50,10 @@ export async function GET(req: NextRequest) {
 
     const total = await prisma.serviceUser.count({ where: whereClause });
 
-    let responseData: ServiceUsersResponse;
+    let responseData: any;
     if (groupByWard) {
       const grouped = serviceUsers.reduce(
-        (acc, user) => {
+        (acc: { [wardName: string]: any[] }, user) => {
           const wardName = user.admissions[0]?.ward?.name || 'No Ward';
           acc[wardName] = acc[wardName] || [];
           acc[wardName].push({
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
           });
           return acc;
         },
-        {} as { [wardName: string]: ServiceUser[] },
+        {},
       );
       responseData = { serviceUsers: grouped, total, page, pageSize };
     } else {
@@ -85,12 +85,13 @@ export async function GET(req: NextRequest) {
       };
     }
 
+    log('Service users fetched successfully', { count: serviceUsers.length, total });
     return NextResponse.json(responseData);
-  } catch (error) {
-    log('SERVICE-USERS:LIST', 'Failed to fetch service users', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch service users' },
-      { status: 500 },
-    );
+  } catch (error: unknown) {
+    log('Failed to fetch service users', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({ error: 'Failed to fetch service users' }, { status: 500 });
   }
 }
+// src/app/api/service-users/route.ts

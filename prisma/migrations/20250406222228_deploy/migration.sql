@@ -2,7 +2,28 @@
 CREATE TYPE "SessionType" AS ENUM ('GROUP', 'ONE_TO_ONE');
 
 -- CreateEnum
-CREATE TYPE "SessionStatus" AS ENUM ('SCHEDULED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE "SessionStatus" AS ENUM ('SCHEDULED', 'COMPLETED', 'CANCELLED', 'DECLINED');
+
+-- CreateTable
+CREATE TABLE "decline_reasons" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3),
+
+    CONSTRAINT "decline_reasons_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "declined_sessions" (
+    "id" SERIAL NOT NULL,
+    "sessionId" INTEGER NOT NULL,
+    "declineReasonId" INTEGER NOT NULL,
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "declined_sessions_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "departments" (
@@ -118,6 +139,12 @@ CREATE TABLE "sessions" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "decline_reasons_name_key" ON "decline_reasons"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "declined_sessions_sessionId_key" ON "declined_sessions"("sessionId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "departments_name_key" ON "departments"("name");
 
 -- CreateIndex
@@ -131,6 +158,12 @@ CREATE UNIQUE INDEX "service_users_nhsNumber_key" ON "service_users"("nhsNumber"
 
 -- CreateIndex
 CREATE INDEX "sessions_groupRef_idx" ON "sessions"("groupRef");
+
+-- AddForeignKey
+ALTER TABLE "declined_sessions" ADD CONSTRAINT "declined_sessions_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "sessions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "declined_sessions" ADD CONSTRAINT "declined_sessions_declineReasonId_fkey" FOREIGN KEY ("declineReasonId") REFERENCES "decline_reasons"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "roles" ADD CONSTRAINT "roles_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

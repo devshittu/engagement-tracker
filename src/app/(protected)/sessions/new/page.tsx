@@ -44,4 +44,4 @@ export default async function NewSessionPage() {
   );
 }
 
-// src/app/sessions/new/page.tsx
+// src/app/(protected)/sessions/new/page.tsx

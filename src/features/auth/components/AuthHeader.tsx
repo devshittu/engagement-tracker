@@ -55,3 +55,4 @@ const AuthHeader: React.FC = () => {
 };
 
 export default AuthHeader;
+// src/features/auth/components/AuthHeader.tsx
