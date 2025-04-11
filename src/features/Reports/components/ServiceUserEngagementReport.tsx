@@ -13,7 +13,7 @@ export const ServiceUserEngagementReport: React.FC<Props> = ({
   serviceUserId,
   admissionId,
 }) => {
-  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [period, setPeriod] = useState<'day' | 'week' | 'month' >('week');
   const { data, isLoading, error } = useServiceUserEngagement({
     serviceUserId,
     period,
