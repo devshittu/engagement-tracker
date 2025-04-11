@@ -9,19 +9,22 @@ const log = (message: string, data?: any) =>
     data ? JSON.stringify(data, null, 2) : '',
   );
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, 
+  
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params; // Await the Promise
   const authResult = await authenticateRequest(req, 0, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const id = parseInt(params.id, 10);
-  if (isNaN(id)) {
-    log('Invalid ID', { id: params.id });
+  const dSId = parseInt(id, 10);
+  if (isNaN(dSId)) {
+    log('Invalid ID', { id: dSId });
     return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
   }
-
   try {
     const declinedSession = await prisma.declinedSession.findUnique({
-      where: { id },
+      where: { id: dSId },
       include: { session: true, declineReason: true },
     });
     if (!declinedSession) {
@@ -41,13 +44,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+
+export async function PUT(req: NextRequest, 
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params; // Await the Promise
   const authResult = await authenticateRequest(req, 3, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const id = parseInt(params.id, 10);
-  if (isNaN(id)) {
-    log('Invalid ID', { id: params.id });
+  const dSId = parseInt(id, 10);
+  if (isNaN(dSId)) {
+    log('Invalid ID', { id: dSId });
     return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
   }
 
@@ -62,7 +69,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const declinedSession = await prisma.declinedSession.update({
-      where: { id },
+      where: { id: dSId },
       data: {
         declineReasonId,
         description: description && typeof description === 'string' ? description : null,
@@ -81,18 +88,21 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, 
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params; // Await the Promise
   const authResult = await authenticateRequest(req, 4, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const id = parseInt(params.id, 10);
-  if (isNaN(id)) {
-    log('Invalid ID', { id: params.id });
+  const dSId = parseInt(id, 10);
+  if (isNaN(dSId)) {
+    log('Invalid ID', { id: dSId });
     return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
   }
 
   try {
-    await prisma.declinedSession.delete({ where: { id } });
+    await prisma.declinedSession.delete({ where: { id: dSId } });
     log('Deleted declined session', { id });
     return NextResponse.json({ message: 'Declined session deleted' });
   } catch (error: unknown) {
