@@ -87,8 +87,8 @@ prisma/schema.prisma
 *.tfstate.*
 
 
-# Terraform ignores
-# Local .terraform directories
+# Prompt ignores
+# Local .prompts directories
 **/.prompts/*
 
 # Crash log files
