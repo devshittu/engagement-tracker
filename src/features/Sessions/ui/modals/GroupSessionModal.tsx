@@ -345,6 +345,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                         }
                       }}
                       tabIndex={0}
+                      role="button"
                       className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center"
                     >
                       <span className="font-medium">{user.name}</span>

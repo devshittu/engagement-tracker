@@ -216,10 +216,10 @@ const InfiniteSessionsList: React.FC = () => {
         </div>
         {showFiltersDescription && (
           <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-            Use these filters to sort and group your sessions. "Sort By" orders
+            {`Use these filters to sort and group your sessions. "Sort By" orders
             the list, "Order" sets ascending or descending, and "Group By"
             organizes sessions into categories like time, activity, or
-            admission.
+            admission.`}
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
