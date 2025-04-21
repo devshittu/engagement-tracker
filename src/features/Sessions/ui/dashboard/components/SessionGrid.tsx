@@ -10,7 +10,10 @@ type SessionGridProps = {
   oneToOneData?: ActiveSessionsResponse;
   groupData?: ActiveSessionsResponse;
   onDecline: (session: any) => (event: React.MouseEvent) => void;
-  onEndSession: (sessionId: number, serviceUserName: string) => (event: React.MouseEvent) => void;
+  onEndSession: (
+    sessionId: number,
+    serviceUserName: string,
+  ) => (event: React.MouseEvent) => void;
 };
 
 const SessionGrid: React.FC<SessionGridProps> = ({
@@ -19,7 +22,8 @@ const SessionGrid: React.FC<SessionGridProps> = ({
   onDecline,
   onEndSession,
 }) => {
-  const oneToOneSessions = 'sessions' in (oneToOneData ?? {}) ? oneToOneData.sessions : [];
+  const oneToOneSessions =
+    'sessions' in (oneToOneData ?? {}) ? oneToOneData.sessions : [];
   const groupSessions = 'groups' in (groupData ?? {}) ? groupData.groups : [];
   const sessionsToDisplay = oneToOneSessions.slice(0, 6 - groupSessions.length);
 
@@ -31,7 +35,8 @@ const SessionGrid: React.FC<SessionGridProps> = ({
           No Active Sessions
         </h2>
         <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-xl mb-4">
-          To start a session, use the search box below to find a service user you want to engage.
+          To start a session, use the search box below to find a service user
+          you want to engage.
         </p>
         <p className="text-base text-gray-500 dark:text-gray-400">
           <em>Then come back here once a session is started!</em>
@@ -55,7 +60,10 @@ const SessionGrid: React.FC<SessionGridProps> = ({
           key={session.id}
           session={session}
           onDecline={onDecline(session)}
-          onEndSession={onEndSession(session.id, session.admission.serviceUser.name)}
+          onEndSession={onEndSession(
+            session.id,
+            session.admission.serviceUser.name,
+          )}
         />
       ))}
     </div>

@@ -21,7 +21,11 @@ const declineSession = async ({
   declineReasonId: number;
   description: string | null;
 }) => {
-  logger.debug('Declining session', { sessionId, declineReasonId, description });
+  logger.debug('Declining session', {
+    sessionId,
+    declineReasonId,
+    description,
+  });
   const response = await apiClient.post(`/api/sessions/${sessionId}/decline`, {
     declineReasonId,
     description,
@@ -42,21 +46,30 @@ export const useDeclineSession = () => {
   const declineMutation = useMutation({
     mutationFn: declineSession,
     onSuccess: async (_, variables) => {
-      logger.info('Decline mutation succeeded', { sessionId: variables.sessionId });
+      logger.info('Decline mutation succeeded', {
+        sessionId: variables.sessionId,
+      });
       toast.success('Session declined successfully!');
 
       // Fetch session type to invalidate the correct query
       try {
-        const session = await apiClient.get(`/api/sessions/${variables.sessionId}`);
+        const session = await apiClient.get(
+          `/api/sessions/${variables.sessionId}`,
+        );
         const sessionType = session.type as 'ONE_TO_ONE' | 'GROUP';
-        logger.debug('Fetched session type for invalidation', { sessionId: variables.sessionId, sessionType });
+        logger.debug('Fetched session type for invalidation', {
+          sessionId: variables.sessionId,
+          sessionType,
+        });
 
         await queryClient.invalidateQueries({
           queryKey: ['activeSessions', { type: sessionType }],
         });
         logger.info('Invalidated active sessions query', { sessionType });
       } catch (error) {
-        logger.error('Failed to fetch session type for invalidation', { error });
+        logger.error('Failed to fetch session type for invalidation', {
+          error,
+        });
         // Fallback to invalidate all active sessions if type fetch fails
         await queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
         logger.warn('Fallback invalidation triggered for all active sessions');

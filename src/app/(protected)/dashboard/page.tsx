@@ -56,30 +56,39 @@ export default function DashboardPage() {
     roleId: 0,
   });
 
-  const { data: departments = [], isLoading: deptLoading } = useQuery<Department[]>({
+  const { data: departments = [], isLoading: deptLoading } = useQuery<
+    Department[]
+  >({
     queryKey: ['departments'],
     queryFn: async () => await apiClient.get('/api/departments'),
-    enabled: !!user && (user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin'),
+    enabled:
+      !!user &&
+      (user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin'),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: roles = [], isLoading: roleLoading } = useQuery<Role[]>({
     queryKey: ['roles'],
     queryFn: async () => await apiClient.get('/api/roles'),
-    enabled: !!user && (user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin'),
+    enabled:
+      !!user &&
+      (user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin'),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: users = [], isLoading: userLoading } = useQuery<ApiUser[]>({
     queryKey: ['users'],
     queryFn: async () => await apiClient.get('/api/users'),
-    enabled: !!user && (user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin'),
+    enabled:
+      !!user &&
+      (user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin'),
     staleTime: 5 * 60 * 1000,
   });
 
   const createDept = useMutation({
     mutationFn: (name: string) => apiClient.post('/api/departments', { name }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['departments'] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['departments'] }),
     onMutate: async (name) => {
       await queryClient.cancelQueries({ queryKey: ['departments'] });
       const previous = queryClient.getQueryData<Department[]>(['departments']);
@@ -101,8 +110,11 @@ export default function DashboardPage() {
   });
 
   const createUser = useMutation({
-    mutationFn: (data: { email: string; departmentId: number; roleId: number }) =>
-      apiClient.post('/api/users', data),
+    mutationFn: (data: {
+      email: string;
+      departmentId: number;
+      roleId: number;
+    }) => apiClient.post('/api/users', data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 
@@ -111,7 +123,8 @@ export default function DashboardPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 
-  const isAdmin = user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin';
+  const isAdmin =
+    user?.roles?.level >= 4 || user?.roles?.name === 'Super Admin';
 
   // Debug parent render
   useEffect(() => {
@@ -128,7 +141,8 @@ export default function DashboardPage() {
           <p className="text-lg">Welcome, {user?.email ?? 'Unknown User'}!</p>
           <p>Department: {user?.departments?.name ?? 'N/A'}</p>
           <p>
-            Role: {user?.roles?.name ?? 'N/A'} (Level: {user?.roles?.level ?? 'N/A'})
+            Role: {user?.roles?.name ?? 'N/A'} (Level:{' '}
+            {user?.roles?.level ?? 'N/A'})
           </p>
           <button
             onClick={() =>
@@ -203,7 +217,8 @@ export default function DashboardPage() {
                       className="flex justify-between items-center text-sm"
                     >
                       <span>
-                        {u.email} - {u.role?.name ?? 'N/A'} ({u.department?.name ?? 'N/A'})
+                        {u.email} - {u.role?.name ?? 'N/A'} (
+                        {u.department?.name ?? 'N/A'})
                       </span>
                       {u.role?.level < (user?.roles?.level ?? 0) && (
                         <button
@@ -259,7 +274,9 @@ export default function DashboardPage() {
               <input
                 type="text"
                 value={newRole.name}
-                onChange={(e) => setNewRole({ ...newRole, name: e.target.value })}
+                onChange={(e) =>
+                  setNewRole({ ...newRole, name: e.target.value })
+                }
                 className="input input-bordered w-full mt-2"
                 placeholder="Role Name"
               />
@@ -267,7 +284,10 @@ export default function DashboardPage() {
                 type="number"
                 value={newRole.level}
                 onChange={(e) =>
-                  setNewRole({ ...newRole, level: parseInt(e.target.value) || 1 })
+                  setNewRole({
+                    ...newRole,
+                    level: parseInt(e.target.value) || 1,
+                  })
                 }
                 className="input input-bordered w-full mt-2"
                 placeholder="Level"
@@ -275,7 +295,10 @@ export default function DashboardPage() {
               <select
                 value={newRole.departmentId}
                 onChange={(e) =>
-                  setNewRole({ ...newRole, departmentId: parseInt(e.target.value) || 0 })
+                  setNewRole({
+                    ...newRole,
+                    departmentId: parseInt(e.target.value) || 0,
+                  })
                 }
                 className="select select-bordered w-full mt-2"
               >
@@ -312,14 +335,19 @@ export default function DashboardPage() {
               <input
                 type="email"
                 value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                onChange={(e) =>
+                  setNewUser({ ...newUser, email: e.target.value })
+                }
                 className="input input-bordered w-full mt-2"
                 placeholder="Email"
               />
               <select
                 value={newUser.departmentId}
                 onChange={(e) =>
-                  setNewUser({ ...newUser, departmentId: parseInt(e.target.value) || 0 })
+                  setNewUser({
+                    ...newUser,
+                    departmentId: parseInt(e.target.value) || 0,
+                  })
                 }
                 className="select select-bordered w-full mt-2"
               >
@@ -333,7 +361,10 @@ export default function DashboardPage() {
               <select
                 value={newUser.roleId}
                 onChange={(e) =>
-                  setNewUser({ ...newUser, roleId: parseInt(e.target.value) || 0 })
+                  setNewUser({
+                    ...newUser,
+                    roleId: parseInt(e.target.value) || 0,
+                  })
                 }
                 className="select select-bordered w-full mt-2"
               >

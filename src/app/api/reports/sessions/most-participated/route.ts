@@ -1,4 +1,3 @@
-
 // src/app/api/reports/sessions/most-participated/route.ts
 // src/app/api/reports/sessions/most-participated/route.ts
 
@@ -80,8 +79,11 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { log } from '@/lib/reportUtils';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:SESSIONS:MOST-PARTICIPATED', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:SESSIONS:MOST-PARTICIPATED', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -95,10 +97,14 @@ export async function GET(req: NextRequest) {
   try {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
-    log('REPORTS:SESSIONS:MOST-PARTICIPATED', 'Fetching most participated activities', {
-      year,
-      month,
-    });
+    log(
+      'REPORTS:SESSIONS:MOST-PARTICIPATED',
+      'Fetching most participated activities',
+      {
+        year,
+        month,
+      },
+    );
 
     const grouped = await prisma.session.groupBy({
       by: ['activityLogId'],
@@ -130,9 +136,13 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    log('REPORTS:SESSIONS:MOST-PARTICIPATED', 'Most participated activities fetched', {
-      top: data[0],
-    });
+    log(
+      'REPORTS:SESSIONS:MOST-PARTICIPATED',
+      'Most participated activities fetched',
+      {
+        top: data[0],
+      },
+    );
     return NextResponse.json({ period: { year, month }, data, top: data[0] });
   } catch (error: unknown) {
     log('REPORTS:SESSIONS:MOST-PARTICIPATED', 'Failed to fetch report', error);

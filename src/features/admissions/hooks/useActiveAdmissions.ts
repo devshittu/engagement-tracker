@@ -18,7 +18,9 @@ export const useActiveAdmissions = () => {
   return useQuery<Admission[], Error>({
     queryKey: ['activeAdmissions'],
     queryFn: async () => {
-      const response = await apiClient.get<Admission[]>('/api/admissions/active');
+      const response = await apiClient.get<Admission[]>(
+        '/api/admissions/active',
+      );
       return response.map((admission) => ({
         ...admission,
         admissionDate: new Date(admission.admissionDate).toISOString(),

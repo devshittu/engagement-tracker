@@ -200,8 +200,11 @@ import { log } from '@/lib/reportUtils';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:FACILITATOR:SNAPSHOT', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:FACILITATOR:SNAPSHOT', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -213,10 +216,14 @@ export async function GET(req: NextRequest) {
   let endDate: Date;
 
   try {
-    startDate = startDateParam ? parseISO(startDateParam) : startOfMonth(new Date());
+    startDate = startDateParam
+      ? parseISO(startDateParam)
+      : startOfMonth(new Date());
     endDate = period === 'month' ? endOfMonth(startDate) : startDate;
   } catch (error: unknown) {
-    log('REPORTS:FACILITATOR:SNAPSHOT', 'Invalid date format', { startDateParam });
+    log('REPORTS:FACILITATOR:SNAPSHOT', 'Invalid date format', {
+      startDateParam,
+    });
     return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
   }
 
@@ -257,15 +264,27 @@ export async function GET(req: NextRequest) {
       const oneToOnes = sessions.filter((s) => s.type === 'ONE_TO_ONE');
 
       const groupOffered = groups.length;
-      const groupCompleted = groups.filter((s) => s.status === 'COMPLETED').length;
-      const groupDeclined = groups.filter((s) => s.status === 'CANCELLED').length;
+      const groupCompleted = groups.filter(
+        (s) => s.status === 'COMPLETED',
+      ).length;
+      const groupDeclined = groups.filter(
+        (s) => s.status === 'CANCELLED',
+      ).length;
 
       const oneToOneOffered = oneToOnes.length;
-      const oneToOneCompleted = oneToOnes.filter((s) => s.status === 'COMPLETED').length;
-      const oneToOneDeclined = oneToOnes.filter((s) => s.status === 'CANCELLED').length;
+      const oneToOneCompleted = oneToOnes.filter(
+        (s) => s.status === 'COMPLETED',
+      ).length;
+      const oneToOneDeclined = oneToOnes.filter(
+        (s) => s.status === 'CANCELLED',
+      ).length;
 
-      const groupPercentCompleted = groupOffered ? (groupCompleted / groupOffered) * 100 : 0;
-      const groupPercentDeclined = groupOffered ? (groupDeclined / groupOffered) * 100 : 0;
+      const groupPercentCompleted = groupOffered
+        ? (groupCompleted / groupOffered) * 100
+        : 0;
+      const groupPercentDeclined = groupOffered
+        ? (groupDeclined / groupOffered) * 100
+        : 0;
       const oneToOnePercentCompleted = oneToOneOffered
         ? (oneToOneCompleted / oneToOneOffered) * 100
         : 0;

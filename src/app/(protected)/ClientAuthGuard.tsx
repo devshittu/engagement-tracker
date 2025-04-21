@@ -163,9 +163,14 @@ export default function ClientAuthGuard({ children }: ClientAuthGuardProps) {
         return;
       }
 
-      const redirectUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}` || '/dashboard';
+      const redirectUrl =
+        `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}` ||
+        '/dashboard';
       const encodedRedirect = encodeURIComponent(redirectUrl);
-      console.log('ClientAuthGuard: Redirecting to login with next:', redirectUrl);
+      console.log(
+        'ClientAuthGuard: Redirecting to login with next:',
+        redirectUrl,
+      );
       router.push(`/login?next=${encodedRedirect}`);
     }
   }, [isMounted, isLoading, user, router, pathname, searchParams]);

@@ -22,12 +22,17 @@ export const useAuth = () => {
     queryKey: ['authUser'],
     queryFn: async () => {
       try {
-        const response = await axios.get('/api/auth/me', { withCredentials: true });
+        const response = await axios.get('/api/auth/me', {
+          withCredentials: true,
+        });
         console.log('useAuth: Fetched auth user:', response.data.user);
         return response.data.user || null;
       } catch (error) {
         if (axios.isAxiosError(error)) {
-          console.log('useAuth: No user session found:', error.response?.status);
+          console.log(
+            'useAuth: No user session found:',
+            error.response?.status,
+          );
         }
         return null;
       }
@@ -38,7 +43,11 @@ export const useAuth = () => {
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: LoginCredentials) => {
-      const response = await axios.post('/api/auth/login', { email, password }, { withCredentials: true });
+      const response = await axios.post(
+        '/api/auth/login',
+        { email, password },
+        { withCredentials: true },
+      );
       return response.data;
     },
     onSuccess: (data) => {
@@ -46,7 +55,10 @@ export const useAuth = () => {
       queryClient.invalidateQueries({ queryKey: ['authUser'] });
     },
     onError: (error: any) => {
-      console.error('useAuth: Login error:', error.response?.data?.error || error.message);
+      console.error(
+        'useAuth: Login error:',
+        error.response?.data?.error || error.message,
+      );
     },
   });
 

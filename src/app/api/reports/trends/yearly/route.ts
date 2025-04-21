@@ -124,8 +124,11 @@ import { startOfYear, endOfYear } from 'date-fns';
 import { authenticateRequest } from '@/lib/authMiddleware';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:TRENDS:YEARLY', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:TRENDS:YEARLY', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 

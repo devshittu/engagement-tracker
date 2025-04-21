@@ -81,8 +81,11 @@ const log = (message: string, data?: any) =>
 
 export async function GET(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -107,8 +110,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -117,7 +123,11 @@ export async function POST(req: NextRequest) {
     const { name, level, departmentId: deptId } = await req.json();
     departmentId = deptId;
     // Step 2: Ensure departmentId is defined for logging
-    log('Creating role', { name, level, departmentId: departmentId ?? 'undefined' });
+    log('Creating role', {
+      name,
+      level,
+      departmentId: departmentId ?? 'undefined',
+    });
 
     if (
       !name ||
@@ -152,7 +162,9 @@ export async function POST(req: NextRequest) {
         );
       }
       if (error.code === 'P2003') {
-        log('Invalid department ID', { departmentId: departmentId ?? 'undefined' });
+        log('Invalid department ID', {
+          departmentId: departmentId ?? 'undefined',
+        });
         return NextResponse.json(
           { error: 'Department not found' },
           { status: 404 },

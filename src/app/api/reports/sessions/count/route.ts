@@ -111,21 +111,27 @@
 //   }
 // }
 
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { getPeriodDates, log } from '@/lib/reportUtils';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:SESSIONS:COUNT', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:SESSIONS:COUNT', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
-  const period = (searchParams.get('period') as 'day' | 'week' | 'month' | 'year') || 'week';
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const period =
+    (searchParams.get('period') as 'day' | 'week' | 'month' | 'year') || 'week';
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customDate = searchParams.get('customDate') as string | undefined;
   const groupBy = searchParams.get('groupBy');
 
@@ -138,11 +144,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { currentStart, currentEnd, previousStart, previousEnd } = getPeriodDates(
-      period,
-      compareTo,
-      customDate,
-    );
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getPeriodDates(period, compareTo, customDate);
     log('REPORTS:SESSIONS:COUNT', 'Fetching session counts', {
       period,
       compareTo,

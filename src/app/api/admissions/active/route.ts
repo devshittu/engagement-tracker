@@ -12,8 +12,11 @@ const log = (message: string, data?: any) =>
 
 export async function GET(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -26,7 +29,9 @@ export async function GET(req: NextRequest) {
       include: { serviceUser: true, ward: true },
     });
 
-    log('Active admissions fetched successfully', { count: activeAdmissions.length });
+    log('Active admissions fetched successfully', {
+      count: activeAdmissions.length,
+    });
     return NextResponse.json(activeAdmissions);
   } catch (error: unknown) {
     log('Failed to fetch active admissions', {

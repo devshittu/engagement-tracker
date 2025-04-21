@@ -6,10 +6,13 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS/ID] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS/ID] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -56,7 +59,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     log('Failed to fetch session', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch session' },
+      { status: 500 },
+    );
   }
 }
 
@@ -74,21 +80,39 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   try {
     const { status, timeOut, cancelReason, activityLogId } = await req.json();
-    log('Updating session', { id: sessionId, status, timeOut, cancelReason, activityLogId });
+    log('Updating session', {
+      id: sessionId,
+      status,
+      timeOut,
+      cancelReason,
+      activityLogId,
+    });
 
     const updateData: any = {};
-    if (status && [SessionStatus.SCHEDULED, SessionStatus.COMPLETED, SessionStatus.CANCELLED].includes(status)) {
+    if (
+      status &&
+      [
+        SessionStatus.SCHEDULED,
+        SessionStatus.COMPLETED,
+        SessionStatus.CANCELLED,
+      ].includes(status)
+    ) {
       updateData.status = status;
     }
-    if (timeOut !== undefined) updateData.timeOut = timeOut ? new Date(timeOut) : null;
-    if (cancelReason !== undefined) updateData.cancelReason = cancelReason || null;
+    if (timeOut !== undefined)
+      updateData.timeOut = timeOut ? new Date(timeOut) : null;
+    if (cancelReason !== undefined)
+      updateData.cancelReason = cancelReason || null;
     if (activityLogId && Number.isInteger(activityLogId)) {
       const activityLog = await prisma.activityContinuityLog.findUnique({
         where: { id: activityLogId },
       });
       if (!activityLog) {
         log('Activity log not found', { activityLogId });
-        return NextResponse.json({ error: 'Activity log not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Activity log not found' },
+          { status: 404 },
+        );
       }
       updateData.activityLogId = activityLogId;
     }
@@ -117,14 +141,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
       },
     });
   } catch (error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
       log('Session not found', { id: sessionId });
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
     log('Failed to update session', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update session' },
+      { status: 500 },
+    );
   }
 }
 
@@ -148,14 +178,20 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     log('Session deleted successfully', { id: sessionId });
     return NextResponse.json({ message: 'Session deleted successfully' });
   } catch (error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
       log('Session not found', { id: sessionId });
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
     log('Failed to delete session', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete session' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/sessions/[id]/route.ts

@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:AUTH/LOGOUT] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:AUTH/LOGOUT] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +27,12 @@ export async function POST(req: NextRequest) {
     log('User logged out');
     return response;
   } catch (error) {
-    log('Unexpected error', { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    log('Unexpected error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    );
   }
 }

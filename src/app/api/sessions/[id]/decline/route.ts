@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus } from '@prisma/client';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
   console.log(
@@ -12,11 +12,11 @@ const log = (message: string, data?: any) =>
     data ? JSON.stringify(data, null, 2) : '',
   );
 
-export async function POST(req: NextRequest,  { params }: Params) {
+export async function POST(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 1, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id: sessionIdStr } =  await params;
+  const { id: sessionIdStr } = await params;
   const sessionId: number = parseInt(sessionIdStr, 10);
 
   if (isNaN(sessionId)) {
@@ -34,14 +34,22 @@ export async function POST(req: NextRequest,  { params }: Params) {
       );
     }
 
-    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+    });
     if (!session) {
       log('Session not found', { id: sessionId });
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    if (session.status === SessionStatus.COMPLETED || session.status === SessionStatus.DECLINED) {
-      log('Session already ended or declined', { id:sessionId, status: session.status });
+    if (
+      session.status === SessionStatus.COMPLETED ||
+      session.status === SessionStatus.DECLINED
+    ) {
+      log('Session already ended or declined', {
+        id: sessionId,
+        status: session.status,
+      });
       return NextResponse.json(
         { error: 'Session is already completed or declined' },
         { status: 400 },
@@ -61,13 +69,17 @@ export async function POST(req: NextRequest,  { params }: Params) {
         data: {
           sessionId: sessionId,
           declineReasonId,
-          description: description && typeof description === 'string' ? description : null,
+          description:
+            description && typeof description === 'string' ? description : null,
         },
       }),
     ]);
 
     log('Session declined successfully', { id: sessionId, declineReasonId });
-    return NextResponse.json({ session: updatedSession[0], declinedSession: updatedSession[1] });
+    return NextResponse.json({
+      session: updatedSession[0],
+      declinedSession: updatedSession[1],
+    });
   } catch (error: unknown) {
     log('Failed to decline session', {
       error: error instanceof Error ? error.message : String(error),

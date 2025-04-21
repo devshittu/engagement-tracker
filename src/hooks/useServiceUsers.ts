@@ -2,10 +2,7 @@
 
 import { useInfiniteQuery, QueryFunctionContext } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
-import {
-  ServiceUserStatus,
-  ServiceUsersResponse,
-} from '@/types/serviceUser';
+import { ServiceUserStatus, ServiceUsersResponse } from '@/types/serviceUser';
 
 type UseServiceUsersParams = {
   statusFilter: ServiceUserStatus;

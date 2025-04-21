@@ -150,15 +150,21 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:TRENDS:DAILY-ACTIVITY', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:TRENDS:DAILY-ACTIVITY', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
   const activityIdStr = searchParams.get('activityId');
   const monthStr = searchParams.get('month'); // YYYY-MM
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customMonth = searchParams.get('customMonth') as string | undefined; // Step 2: Fix type to avoid 'string | null' error
 
   const activityId = activityIdStr ? parseInt(activityIdStr) : NaN;
@@ -270,10 +276,15 @@ export async function GET(req: NextRequest) {
         data: previousData,
       },
     });
-  } catch (error: unknown) { // Step 3: Type error as unknown
-    log('REPORTS:TRENDS:DAILY-ACTIVITY', 'Failed to fetch daily activity trends', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+  } catch (error: unknown) {
+    // Step 3: Type error as unknown
+    log(
+      'REPORTS:TRENDS:DAILY-ACTIVITY',
+      'Failed to fetch daily activity trends',
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
     return NextResponse.json(
       { error: 'Failed to fetch daily activity trends' },
       { status: 500 },

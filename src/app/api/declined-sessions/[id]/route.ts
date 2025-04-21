@@ -9,8 +9,9 @@ const log = (message: string, data?: any) =>
     data ? JSON.stringify(data, null, 2) : '',
   );
 
-export async function GET(req: NextRequest, 
-  
+export async function GET(
+  req: NextRequest,
+
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params; // Await the Promise
@@ -29,7 +30,10 @@ export async function GET(req: NextRequest,
     });
     if (!declinedSession) {
       log('Declined session not found', { id });
-      return NextResponse.json({ error: 'Declined session not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Declined session not found' },
+        { status: 404 },
+      );
     }
     log('Fetched declined session', { id });
     return NextResponse.json(declinedSession);
@@ -44,8 +48,8 @@ export async function GET(req: NextRequest,
   }
 }
 
-
-export async function PUT(req: NextRequest, 
+export async function PUT(
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params; // Await the Promise
@@ -72,7 +76,8 @@ export async function PUT(req: NextRequest,
       where: { id: dSId },
       data: {
         declineReasonId,
-        description: description && typeof description === 'string' ? description : null,
+        description:
+          description && typeof description === 'string' ? description : null,
       },
     });
     log('Updated declined session', { id, declineReasonId });
@@ -88,7 +93,8 @@ export async function PUT(req: NextRequest,
   }
 }
 
-export async function DELETE(req: NextRequest, 
+export async function DELETE(
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params; // Await the Promise

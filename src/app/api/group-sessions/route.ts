@@ -1,4 +1,3 @@
-
 // src/app/api/group-sessions/route.ts
 
 // import { NextRequest, NextResponse } from 'next/server';
@@ -242,7 +241,9 @@ export async function GET(req: NextRequest) {
       updatedAt: session.updatedAt?.toISOString() || null,
     }));
 
-    logger.info('Active group sessions fetched successfully', { count: sessions.length });
+    logger.info('Active group sessions fetched successfully', {
+      count: sessions.length,
+    });
     return NextResponse.json({ sessions: serialized });
   } catch (error) {
     logger.error('Failed to fetch active group sessions', { error });
@@ -264,7 +265,11 @@ export async function POST(req: NextRequest) {
     logger.debug('Received request body', { body });
 
     const { type, activityLogId, admissionIds } = body;
-    logger.info('Creating group session', { type, activityLogId, admissionIds });
+    logger.info('Creating group session', {
+      type,
+      activityLogId,
+      admissionIds,
+    });
 
     if (
       type !== SessionType.GROUP ||
@@ -332,7 +337,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingSession) {
-      logger.info('Existing group session found', { groupRef: existingSession.groupRef });
+      logger.info('Existing group session found', {
+        groupRef: existingSession.groupRef,
+      });
       return NextResponse.json(
         {
           ...existingSession,
@@ -387,7 +394,10 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
   } catch (error: any) {
-    logger.error('Failed to create group session', { error: error.message, stack: error.stack });
+    logger.error('Failed to create group session', {
+      error: error.message,
+      stack: error.stack,
+    });
     if (error.code === 'P2003') {
       return NextResponse.json(
         { error: 'Invalid activity log or admission ID' },

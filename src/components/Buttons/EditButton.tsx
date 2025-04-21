@@ -7,16 +7,17 @@ type EditButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   ariaLabel?: string; // Optional: Support legacy ariaLabel prop
 };
 
-export const EditButton: React.FC<EditButtonProps> = ({ onClick, 
+export const EditButton: React.FC<EditButtonProps> = ({
+  onClick,
   ariaLabel, // Optional: Handle legacy prop
   ...buttonProps // Spread remaining HTML button props
- }) => (
+}) => (
   <button
     className="text-stone-800 bg-white rounded-full p-3 hover:bg-gray-50"
-    type="button"// Default type, overridable via props
-      aria-label={ariaLabel ?? buttonProps['aria-label'] ?? 'Edit item'} // Prioritize ariaLabel, then aria-label, then default
-      onClick={onClick}
-      {...buttonProps} // Spread all other HTML button attributes
+    type="button" // Default type, overridable via props
+    aria-label={ariaLabel ?? buttonProps['aria-label'] ?? 'Edit item'} // Prioritize ariaLabel, then aria-label, then default
+    onClick={onClick}
+    {...buttonProps} // Spread all other HTML button attributes
   >
     <BaseIcon size={24} viewBox="0 0 24 24">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />

@@ -19,8 +19,10 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
   preselectedUserId,
   onSessionCreated,
 }) => {
-  const { data: admissions = [], isLoading: isAdmissionsLoading } = useActiveAdmissions();
-  const { data: activities = [], isLoading: isActivitiesLoading } = useActiveActivities();
+  const { data: admissions = [], isLoading: isAdmissionsLoading } =
+    useActiveAdmissions();
+  const { data: activities = [], isLoading: isActivitiesLoading } =
+    useActiveActivities();
 
   if (isAdmissionsLoading || isActivitiesLoading) {
     return <div>Loading admissions and activities...</div>;

@@ -117,8 +117,11 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:TRENDS:STAFF-MONTHLY', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:TRENDS:STAFF-MONTHLY', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -207,10 +210,15 @@ export async function GET(req: NextRequest) {
         data: previousData,
       },
     });
-  } catch (error: unknown) { // Step 3: Type error as unknown
-    log('REPORTS:TRENDS:STAFF-MONTHLY', 'Failed to fetch staff monthly trends', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+  } catch (error: unknown) {
+    // Step 3: Type error as unknown
+    log(
+      'REPORTS:TRENDS:STAFF-MONTHLY',
+      'Failed to fetch staff monthly trends',
+      {
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
     return NextResponse.json(
       { error: 'Failed to fetch staff monthly trends' },
       { status: 500 },

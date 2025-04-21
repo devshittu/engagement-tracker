@@ -129,8 +129,6 @@
 //   }
 // }
 
-
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
@@ -138,18 +136,27 @@ import { getPeriodDates, log } from '@/lib/reportUtils';
 import { format, subDays } from 'date-fns';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) =>
+      log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
   const period = (searchParams.get('period') as 'month' | 'year') || 'month';
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customDate = searchParams.get('customDate') as string | undefined;
 
   if (!['month', 'year'].includes(period)) {
-    log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', 'Invalid period', { period });
+    log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', 'Invalid period', {
+      period,
+    });
     return NextResponse.json(
       { error: 'Invalid period. Use month or year.' },
       { status: 400 },
@@ -157,15 +164,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { currentStart, currentEnd, previousStart, previousEnd } = getPeriodDates(
-      period,
-      compareTo,
-      customDate,
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getPeriodDates(period, compareTo, customDate);
+    log(
+      'REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE',
+      'Fetching engagement decline',
+      {
+        period,
+        compareTo,
+      },
     );
-    log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', 'Fetching engagement decline', {
-      period,
-      compareTo,
-    });
 
     const buildDeclineData = async (start: Date, end: Date) => {
       const sessions = await prisma.session.findMany({
@@ -223,10 +231,14 @@ export async function GET(req: NextRequest) {
     const currentDecline = detectDecline(currentData);
     const previousDecline = detectDecline(previousData);
 
-    log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', 'Engagement decline fetched', {
-      currentDecline,
-      previousDecline,
-    });
+    log(
+      'REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE',
+      'Engagement decline fetched',
+      {
+        currentDecline,
+        previousDecline,
+      },
+    );
     return NextResponse.json({
       period,
       currentData,
@@ -241,7 +253,11 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    log('REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE', 'Failed to fetch engagement decline', error);
+    log(
+      'REPORTS:SERVICE-USERS:ENGAGEMENT-DECLINE',
+      'Failed to fetch engagement decline',
+      error,
+    );
     return NextResponse.json(
       { error: 'Failed to fetch engagement decline' },
       { status: 500 },

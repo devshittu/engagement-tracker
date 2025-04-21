@@ -31,13 +31,13 @@ export const LoginForm = memo(({ nextUrl = '/dashboard' }: LoginFormProps) => {
             onError: (error) => {
               console.error('Login failed:', error);
             },
-          }
+          },
         );
       } catch (error) {
         console.error('Login error:', error);
       }
     },
-    [email, password, login, nextUrl, router]
+    [email, password, login, nextUrl, router],
   );
 
   return (

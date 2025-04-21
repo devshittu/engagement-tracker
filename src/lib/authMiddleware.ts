@@ -21,18 +21,29 @@ export const authenticateRequest = async (
   requiredRoleName?: string,
   log: (message: string, data?: any) => void = () => {},
 ): Promise<AuthResult | NextResponse> => {
-  const token = req.cookies.get('sb-access-token')?.value || req.headers.get('Authorization')?.split(' ')[1];
+  const token =
+    req.cookies.get('sb-access-token')?.value ||
+    req.headers.get('Authorization')?.split(' ')[1];
   if (!token) {
     log('Unauthorized access attempt: Missing token');
-    return NextResponse.json({ error: 'Unauthorized: Missing token' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Unauthorized: Missing token' },
+      { status: 401 },
+    );
   }
 
   log('Token received:', { token: token.slice(0, 10) + '...' });
 
-  const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabaseAdmin.auth.getUser(token);
   if (userError || !user) {
     log('Failed to authenticate user:', userError?.message);
-    return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Unauthorized: Invalid token' },
+      { status: 401 },
+    );
   }
 
   let userProfile: UserProfile | null = null;
@@ -43,7 +54,9 @@ export const authenticateRequest = async (
     .single();
 
   if (profileError || !supabaseProfile) {
-    log('Supabase profile fetch failed, falling back to Prisma', { error: profileError?.message });
+    log('Supabase profile fetch failed, falling back to Prisma', {
+      error: profileError?.message,
+    });
     const prismaProfile = await prisma.user.findUnique({
       where: { id: user.id },
       include: { role: true },
@@ -51,7 +64,10 @@ export const authenticateRequest = async (
 
     if (!prismaProfile) {
       log('Failed to fetch user profile from Prisma');
-      return NextResponse.json({ error: 'Unauthorized: User profile not found' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized: User profile not found' },
+        { status: 401 },
+      );
     }
 
     userProfile = {
@@ -59,7 +75,13 @@ export const authenticateRequest = async (
       email: prismaProfile.email,
       departmentId: prismaProfile.departmentId,
       roles: prismaProfile.role
-        ? [{ id: prismaProfile.role.id, name: prismaProfile.role.name, level: prismaProfile.role.level }]
+        ? [
+            {
+              id: prismaProfile.role.id,
+              name: prismaProfile.role.name,
+              level: prismaProfile.role.level,
+            },
+          ]
         : [],
     };
   } else {
@@ -69,16 +91,26 @@ export const authenticateRequest = async (
   const roles = userProfile.roles || [];
   if (roles.length === 0) {
     log('User has no roles assigned', { userId: user.id });
-    return NextResponse.json({ error: 'Forbidden: No roles assigned' }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Forbidden: No roles assigned' },
+      { status: 403 },
+    );
   }
 
   const userRole = roles[0];
-  if (requiredRoleLevel > 0 && userRole.level < requiredRoleLevel && userRole.name !== 'Super Admin') {
+  if (
+    requiredRoleLevel > 0 &&
+    userRole.level < requiredRoleLevel &&
+    userRole.name !== 'Super Admin'
+  ) {
     log('Insufficient permissions: Role level too low', {
       requiredLevel: requiredRoleLevel,
       userLevel: userRole.level,
     });
-    return NextResponse.json({ error: 'Forbidden: Insufficient role level' }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Forbidden: Insufficient role level' },
+      { status: 403 },
+    );
   }
 
   if (requiredRoleName && userRole.name !== requiredRoleName) {
@@ -86,10 +118,16 @@ export const authenticateRequest = async (
       requiredRole: requiredRoleName,
       userRole: userRole.name,
     });
-    return NextResponse.json({ error: `Forbidden: Only ${requiredRoleName} can perform this action` }, { status: 403 });
+    return NextResponse.json(
+      { error: `Forbidden: Only ${requiredRoleName} can perform this action` },
+      { status: 403 },
+    );
   }
 
-  log('User authenticated successfully', { userId: user.id, role: userRole.name });
+  log('User authenticated successfully', {
+    userId: user.id,
+    role: userRole.name,
+  });
   return { userProfile, userId: user.id };
 };
 // src/lib/authMiddleware.ts

@@ -47,15 +47,18 @@ const fetchActiveActivities = async (): Promise<Activity[]> => {
   const response: Activity[] = await apiClient.get('/api/activities/active');
   return response.map((activity: Activity) => {
     const createdAtDate = new Date(activity.createdAt);
-    const updatedAtDate = activity.updatedAt ? new Date(activity.updatedAt) : null;
+    const updatedAtDate = activity.updatedAt
+      ? new Date(activity.updatedAt)
+      : null;
     return {
       ...activity,
       createdAt: Number.isNaN(createdAtDate.getTime())
         ? new Date().toISOString() // Fallback to current date if invalid
         : createdAtDate.toISOString(),
-      updatedAt: updatedAtDate && !Number.isNaN(updatedAtDate.getTime())
-        ? updatedAtDate.toISOString()
-        : null,
+      updatedAt:
+        updatedAtDate && !Number.isNaN(updatedAtDate.getTime())
+          ? updatedAtDate.toISOString()
+          : null,
     };
   });
 };

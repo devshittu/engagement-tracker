@@ -16,8 +16,11 @@ export async function GET(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -25,7 +28,10 @@ export async function GET(
 
   if (isNaN(departmentId)) {
     log('Invalid department ID', { id });
-    return NextResponse.json({ error: 'Invalid department ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid department ID' },
+      { status: 400 },
+    );
   }
 
   try {
@@ -42,7 +48,10 @@ export async function GET(
       );
     }
 
-    log('Department fetched successfully', { id: department.id, name: department.name });
+    log('Department fetched successfully', {
+      id: department.id,
+      name: department.name,
+    });
     return NextResponse.json(department);
   } catch (error: unknown) {
     log('Failed to fetch department', {
@@ -61,8 +70,11 @@ export async function PUT(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -70,7 +82,10 @@ export async function PUT(
 
   if (isNaN(departmentId)) {
     log('Invalid department ID', { id });
-    return NextResponse.json({ error: 'Invalid department ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid department ID' },
+      { status: 400 },
+    );
   }
 
   // Initialize variables to avoid undefined errors
@@ -95,7 +110,10 @@ export async function PUT(
       data: { name, updatedAt: new Date() },
     });
 
-    log('Department updated successfully', { id: department.id, name: department.name });
+    log('Department updated successfully', {
+      id: department.id,
+      name: department.name,
+    });
     return NextResponse.json(department);
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -130,8 +148,11 @@ export async function DELETE(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -139,7 +160,10 @@ export async function DELETE(
 
   if (isNaN(departmentId)) {
     log('Invalid department ID', { id });
-    return NextResponse.json({ error: 'Invalid department ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid department ID' },
+      { status: 400 },
+    );
   }
 
   try {
@@ -149,7 +173,10 @@ export async function DELETE(
     });
 
     log('Department deleted successfully', { id: departmentId });
-    return NextResponse.json({ message: 'Department deleted' }, { status: 200 });
+    return NextResponse.json(
+      { message: 'Department deleted' },
+      { status: 200 },
+    );
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
@@ -160,9 +187,14 @@ export async function DELETE(
         );
       }
       if (error.code === 'P2003') {
-        log('Department cannot be deleted due to associated records', { id: departmentId });
+        log('Department cannot be deleted due to associated records', {
+          id: departmentId,
+        });
         return NextResponse.json(
-          { error: 'Department cannot be deleted because it has associated records' },
+          {
+            error:
+              'Department cannot be deleted because it has associated records',
+          },
           { status: 409 },
         );
       }

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
   console.log(
@@ -13,13 +13,13 @@ const log = (message: string, data?: any) =>
     data ? JSON.stringify(data, null, 2) : '',
   );
 
-export async function POST(
-  req: NextRequest,
-  { params }: Params,
-) {
+export async function POST(req: NextRequest, { params }: Params) {
   // Step 1: Authenticate with a minimal role level; we'll handle additional checks manually
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -27,7 +27,10 @@ export async function POST(
   const { id } = await params;
 
   try {
-    log('Fetching current user and target user', { currentUserId: userId, targetUserId: id });
+    log('Fetching current user and target user', {
+      currentUserId: userId,
+      targetUserId: id,
+    });
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       include: { role: true, department: true },

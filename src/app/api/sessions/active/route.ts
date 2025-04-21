@@ -5,7 +5,10 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus, SessionType } from '@prisma/client';
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS/ACTIVE] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS/ACTIVE] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(req: NextRequest) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -59,7 +62,8 @@ export async function GET(req: NextRequest) {
               admission: {
                 ...session.admission,
                 admissionDate: session.admission.admissionDate.toISOString(),
-                dischargeDate: session.admission.dischargeDate?.toISOString() || null,
+                dischargeDate:
+                  session.admission.dischargeDate?.toISOString() || null,
               },
             })),
           };
@@ -105,14 +109,20 @@ export async function GET(req: NextRequest) {
         },
       }));
 
-      log('Active sessions fetched successfully', { count: sessions.length, total });
+      log('Active sessions fetched successfully', {
+        count: sessions.length,
+        total,
+      });
       return NextResponse.json({ sessions: serialized, total, page, pageSize });
     }
   } catch (error: unknown) {
     log('Failed to fetch active sessions', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to fetch active sessions' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch active sessions' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/sessions/active/route.ts

@@ -130,7 +130,6 @@
 
 // export default Modal;
 
-
 'use client';
 
 import React, { useEffect, useRef, ReactNode } from 'react';
@@ -164,7 +163,8 @@ const Modal: React.FC<ModalProps> = ({
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      portalRoot.current = document.getElementById('modal-root') || document.body;
+      portalRoot.current =
+        document.getElementById('modal-root') || document.body;
       logger.debug('Portal root initialized', {
         id,
         ariaLabel,
@@ -192,7 +192,11 @@ const Modal: React.FC<ModalProps> = ({
       }
       const timeSinceOpen = Date.now() - lastOpenTime.current;
       if (timeSinceOpen < 300) {
-        logger.debug('Ignoring early outside click', { id, ariaLabel, timeSinceOpen });
+        logger.debug('Ignoring early outside click', {
+          id,
+          ariaLabel,
+          timeSinceOpen,
+        });
         return;
       }
       logger.info('Modal closed via outside click', {
@@ -205,7 +209,8 @@ const Modal: React.FC<ModalProps> = ({
     };
 
     document.addEventListener('click', clickHandler, { capture: true });
-    return () => document.removeEventListener('click', clickHandler, { capture: true });
+    return () =>
+      document.removeEventListener('click', clickHandler, { capture: true });
   }, [show, handleClose, id, ariaLabel]);
 
   useEffect(() => {
@@ -220,11 +225,14 @@ const Modal: React.FC<ModalProps> = ({
   }, [handleClose, id, ariaLabel]);
 
   if (!portalRoot.current) {
-    logger.error('Cannot render modal, portal root is still null after initialization', {
-      id,
-      ariaLabel,
-      documentReady: typeof document !== 'undefined',
-    });
+    logger.error(
+      'Cannot render modal, portal root is still null after initialization',
+      {
+        id,
+        ariaLabel,
+        documentReady: typeof document !== 'undefined',
+      },
+    );
     return null;
   }
 
@@ -268,7 +276,7 @@ const Modal: React.FC<ModalProps> = ({
         </FocusLock>
       </Transition>
     </>,
-    portalRoot.current
+    portalRoot.current,
   );
 };
 

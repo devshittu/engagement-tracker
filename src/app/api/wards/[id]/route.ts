@@ -1,14 +1,16 @@
 // src/app/api/wards/[id]/route.ts
 
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:WARDS/ID] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:WARDS/ID] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -37,7 +39,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json(ward);
   } catch (error) {
     log('Failed to fetch ward', error);
-    return NextResponse.json({ error: 'Failed to fetch ward' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch ward' },
+      { status: 500 },
+    );
   }
 }
 
@@ -72,14 +77,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
   } catch (error: any) {
     if (error.code === 'P2002') {
       log('Ward name already exists', { name });
-      return NextResponse.json({ error: 'Ward name already exists' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Ward name already exists' },
+        { status: 409 },
+      );
     }
     if (error.code === 'P2025') {
       log('Ward not found', { id: wardId });
       return NextResponse.json({ error: 'Ward not found' }, { status: 404 });
     }
     log('Failed to update ward', error);
-    return NextResponse.json({ error: 'Failed to update ward' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update ward' },
+      { status: 500 },
+    );
   }
 }
 
@@ -107,13 +118,20 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Ward not found' }, { status: 404 });
     }
     if (error.code === 'P2003') {
-      log('Ward cannot be deleted due to associated admissions', { id: wardId });
+      log('Ward cannot be deleted due to associated admissions', {
+        id: wardId,
+      });
       return NextResponse.json(
-        { error: 'Ward cannot be deleted because it has associated admissions' },
+        {
+          error: 'Ward cannot be deleted because it has associated admissions',
+        },
         { status: 409 },
       );
     }
     log('Failed to delete ward', error);
-    return NextResponse.json({ error: 'Failed to delete ward' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete ward' },
+      { status: 500 },
+    );
   }
 }

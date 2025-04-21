@@ -67,8 +67,8 @@ export async function GET(
       period === 'week'
         ? 'yyyy-ww'
         : period === 'month'
-        ? 'yyyy-MM'
-        : 'yyyy-MM-dd';
+          ? 'yyyy-MM'
+          : 'yyyy-MM-dd';
     return { date: format(session.timeIn, dateFormat), sessionCount: 1 };
   });
 

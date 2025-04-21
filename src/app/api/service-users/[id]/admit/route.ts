@@ -4,10 +4,13 @@ import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SERVICE-USERS/ADMIT] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SERVICE-USERS/ADMIT] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function POST(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -19,7 +22,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (isNaN(serviceUserId)) {
     log('Invalid service user ID', { serviceUserId });
-    return NextResponse.json({ error: 'Invalid service user ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid service user ID' },
+      { status: 400 },
+    );
   }
 
   try {
@@ -28,7 +34,10 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     if (!wardId || !Number.isInteger(wardId)) {
       log('Invalid ward ID', { wardId });
-      return NextResponse.json({ error: 'Valid ward ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Valid ward ID is required' },
+        { status: 400 },
+      );
     }
 
     const admission = await prisma.admission.create({
@@ -43,19 +52,28 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
 
     log('Admission created successfully', { id: admission.id });
-    return NextResponse.json({
-      ...admission,
-      admissionDate: admission.admissionDate.toISOString(),
-      dischargeDate: null,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        ...admission,
+        admissionDate: admission.admissionDate.toISOString(),
+        dischargeDate: null,
+      },
+      { status: 201 },
+    );
   } catch (error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2003'
+    ) {
       log('Invalid foreign key', { serviceUserId });
     }
     log('Failed to create admission', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to create admission' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create admission' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/service-users/[id]/admit/route.ts

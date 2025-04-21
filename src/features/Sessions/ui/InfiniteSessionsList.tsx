@@ -7,7 +7,12 @@ import { InView } from 'react-intersection-observer';
 import { toast } from 'react-toastify';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { SessionsResponse, GroupedResponse, GroupedSession, Session } from '@/types/serviceUser';
+import {
+  SessionsResponse,
+  GroupedResponse,
+  GroupedSession,
+  Session,
+} from '@/types/serviceUser';
 import { useSessions } from '@/hooks/useSessions';
 import ElapsedTime from './ElapsedTime';
 import GroupSessionCard from './cards/GroupSessionCard';
@@ -17,21 +22,26 @@ type SessionsData = SessionsResponse | GroupedResponse;
 const InfiniteSessionsList: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('timeIn');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-  const [groupBy, setGroupBy] = useState<'none' | 'timeIn' | 'activityLogId' | 'admissionId'>('none');
+  const [groupBy, setGroupBy] = useState<
+    'none' | 'timeIn' | 'activityLogId' | 'admissionId'
+  >('none');
   const [showFiltersDescription, setShowFiltersDescription] = useState(false);
 
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } = useSessions({
-    sortBy,
-    order,
-    groupBy,
-  });
+  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
+    useSessions({
+      sortBy,
+      order,
+      groupBy,
+    });
 
   const handleEndSession = async (sessionId: number) => {
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/end`, { method: 'POST' });
+      const response = await fetch(`/api/sessions/${sessionId}/end`, {
+        method: 'POST',
+      });
       if (response.ok) {
         queryClient.invalidateQueries({ queryKey: ['sessions'] });
         toast.success('Session ended successfully!');
@@ -60,17 +70,20 @@ const InfiniteSessionsList: React.FC = () => {
               <div className="space-y-2">
                 {group.timeIn && (
                   <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    <span className="mr-2">⏳</span>Time In: {new Date(group.timeIn).toLocaleString()}
+                    <span className="mr-2">⏳</span>Time In:{' '}
+                    {new Date(group.timeIn).toLocaleString()}
                   </p>
                 )}
                 {group.admissionId && (
                   <p className="text-gray-600 dark:text-gray-400">
-                    <span className="mr-2">🏥</span>Admission ID: {group.admissionId}
+                    <span className="mr-2">🏥</span>Admission ID:{' '}
+                    {group.admissionId}
                   </p>
                 )}
                 {group.activityId && (
                   <p className="text-gray-600 dark:text-gray-400">
-                    <span className="mr-2">🎯</span>Activity Log ID: {group.activityId}
+                    <span className="mr-2">🎯</span>Activity Log ID:{' '}
+                    {group.activityId}
                   </p>
                 )}
                 <p className="text-teal-600 dark:text-teal-400 font-bold">
@@ -86,13 +99,25 @@ const InfiniteSessionsList: React.FC = () => {
         <React.Fragment key={pageIndex}>
           {page.sessions
             .reduce(
-              (acc: { groupRef: string; sessions: Session[] }[], session: Session) => {
-                if (session.type === 'GROUP' && session.groupRef && !session.timeOut) {
-                  const existingGroup = acc.find((group) => group.groupRef === session.groupRef);
+              (
+                acc: { groupRef: string; sessions: Session[] }[],
+                session: Session,
+              ) => {
+                if (
+                  session.type === 'GROUP' &&
+                  session.groupRef &&
+                  !session.timeOut
+                ) {
+                  const existingGroup = acc.find(
+                    (group) => group.groupRef === session.groupRef,
+                  );
                   if (existingGroup) {
                     existingGroup.sessions.push(session);
                   } else {
-                    acc.push({ groupRef: session.groupRef, sessions: [session] });
+                    acc.push({
+                      groupRef: session.groupRef,
+                      sessions: [session],
+                    });
                   }
                 }
                 return acc;
@@ -103,12 +128,18 @@ const InfiniteSessionsList: React.FC = () => {
               <GroupSessionCard
                 key={group.groupRef}
                 groupRef={group.groupRef}
-                groupDescription={group.sessions[0].groupDescription || 'No description available'}
+                groupDescription={
+                  group.sessions[0].groupDescription ||
+                  'No description available'
+                }
                 sessions={group.sessions}
               />
             ))}
           {page.sessions
-            .filter((session: Session) => session.type === 'ONE_TO_ONE' || session.timeOut)
+            .filter(
+              (session: Session) =>
+                session.type === 'ONE_TO_ONE' || session.timeOut,
+            )
             .map((session: Session) => (
               <motion.div
                 key={session.id}
@@ -120,17 +151,20 @@ const InfiniteSessionsList: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                      <span className="mr-2">🧑‍⚕️</span>{session.admission.serviceUser.name}
+                      <span className="mr-2">🧑‍⚕️</span>
+                      {session.admission.serviceUser.name}
                     </h2>
                     <span className="badge bg-teal-500 text-white px-2 py-1 rounded-full text-sm">
                       #{session.id}
                     </span>
                   </div>
                   <p className="text-gray-700 dark:text-gray-300">
-                    <span className="mr-2">🎯</span>Activity: {session.activityLog.activity.name}
+                    <span className="mr-2">🎯</span>Activity:{' '}
+                    {session.activityLog.activity.name}
                   </p>
                   <p className="text-gray-700 dark:text-gray-300">
-                    <span className="mr-2">⏳</span>Time In: {new Date(session.timeIn).toLocaleString()}
+                    <span className="mr-2">⏳</span>Time In:{' '}
+                    {new Date(session.timeIn).toLocaleString()}
                   </p>
                   <p className="text-gray-700 dark:text-gray-300">
                     <span className="mr-2">🚀</span>Time Out:{' '}
@@ -144,7 +178,11 @@ const InfiniteSessionsList: React.FC = () => {
                   </p>
                   <div className="text-gray-700 dark:text-gray-300">
                     <span className="mr-2">⏰</span>Elapsed Time:{' '}
-                    <ElapsedTime timeIn={session.timeIn} timeOut={session.timeOut} big />
+                    <ElapsedTime
+                      timeIn={session.timeIn}
+                      timeOut={session.timeOut}
+                      big
+                    />
                   </div>
                   {!session.timeOut && session.type === 'ONE_TO_ONE' && (
                     <button
@@ -166,7 +204,9 @@ const InfiniteSessionsList: React.FC = () => {
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Filter Sessions</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Filter Sessions
+          </h2>
           <button
             onClick={() => setShowFiltersDescription(!showFiltersDescription)}
             className="text-teal-500 hover:text-teal-600 text-sm"
@@ -176,12 +216,18 @@ const InfiniteSessionsList: React.FC = () => {
         </div>
         {showFiltersDescription && (
           <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-            Use these filters to sort and group your sessions. "Sort By" orders the list, "Order" sets ascending or descending, and "Group By" organizes sessions into categories like time, activity, or admission.
+            Use these filters to sort and group your sessions. "Sort By" orders
+            the list, "Order" sets ascending or descending, and "Group By"
+            organizes sessions into categories like time, activity, or
+            admission.
           </p>
         )}
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
           <div className="flex-1">
-            <label htmlFor="sortSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="sortSelect"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Sort By
             </label>
             <select
@@ -196,7 +242,10 @@ const InfiniteSessionsList: React.FC = () => {
             </select>
           </div>
           <div className="flex-1">
-            <label htmlFor="orderSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="orderSelect"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Order
             </label>
             <select
@@ -210,14 +259,25 @@ const InfiniteSessionsList: React.FC = () => {
             </select>
           </div>
           <div className="flex-1">
-            <label htmlFor="groupSelect" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="groupSelect"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Group By
             </label>
             <select
               id="groupSelect"
               className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500"
               value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as 'none' | 'timeIn' | 'activityLogId' | 'admissionId')}
+              onChange={(e) =>
+                setGroupBy(
+                  e.target.value as
+                    | 'none'
+                    | 'timeIn'
+                    | 'activityLogId'
+                    | 'admissionId',
+                )
+              }
             >
               <option value="none">None</option>
               <option value="timeIn">Time In</option>
@@ -229,7 +289,9 @@ const InfiniteSessionsList: React.FC = () => {
       </div>
 
       <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
-        {data?.pages.map((page: SessionsData, pageIndex: number) => renderPage(page, pageIndex))}
+        {data?.pages.map((page: SessionsData, pageIndex: number) =>
+          renderPage(page, pageIndex),
+        )}
         {hasNextPage && (
           <InView
             onChange={(inView) => {

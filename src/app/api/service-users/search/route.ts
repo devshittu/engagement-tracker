@@ -6,7 +6,10 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { Prisma } from '@prisma/client';
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SERVICE-USERS/SEARCH] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SERVICE-USERS/SEARCH] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(req: NextRequest) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -18,8 +21,11 @@ export async function GET(req: NextRequest) {
     const page: number = parseInt(searchParams.get('page') || '1', 10);
     const pageSize: number = parseInt(searchParams.get('pageSize') || '20', 10);
     const sortBy: string = searchParams.get('sortBy') || 'name';
-    const order: 'asc' | 'desc' = (searchParams.get('order') || 'asc') as 'asc' | 'desc';
-    const includeDischarged: boolean = searchParams.get('includeDischarged') === 'true';
+    const order: 'asc' | 'desc' = (searchParams.get('order') || 'asc') as
+      | 'asc'
+      | 'desc';
+    const includeDischarged: boolean =
+      searchParams.get('includeDischarged') === 'true';
     const skip: number = (page - 1) * pageSize;
 
     const whereClause: Prisma.ServiceUserWhereInput = {
@@ -30,7 +36,12 @@ export async function GET(req: NextRequest) {
       admissions: includeDischarged ? {} : { some: { dischargeDate: null } },
     };
 
-    log('Searching service users', { query, page, pageSize, includeDischarged });
+    log('Searching service users', {
+      query,
+      page,
+      pageSize,
+      includeDischarged,
+    });
 
     const [serviceUsers, total] = await Promise.all([
       prisma.serviceUser.findMany({
@@ -67,7 +78,10 @@ export async function GET(req: NextRequest) {
     log('Failed to search service users', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to search service users' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to search service users' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/service-users/search/route.ts

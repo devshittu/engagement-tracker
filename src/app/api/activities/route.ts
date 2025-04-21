@@ -192,7 +192,10 @@ export async function GET(req: NextRequest) {
     log('Failed to fetch activities', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }
 
@@ -202,21 +205,31 @@ export async function POST(req: NextRequest) {
 
   const { userProfile } = authResult;
 
-  let body: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'> = { name: '', description: '', departmentId: 0, department: null };
+  let body: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'> = {
+    name: '',
+    description: '',
+    departmentId: 0,
+    department: null,
+  };
   try {
     body = await req.json();
     log('Creating activity', { body });
 
     if (!body.name) {
       log('Activity name is required');
-      return NextResponse.json({ error: 'Activity name is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Activity name is required' },
+        { status: 400 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
     const departmentId = body.departmentId ?? userProfile.departmentId;
 
     if (userRoleLevel < 3 && departmentId !== userProfile.departmentId) {
-      log('Forbidden: User does not have permission to create in this department');
+      log(
+        'Forbidden: User does not have permission to create in this department',
+      );
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -245,7 +258,10 @@ export async function POST(req: NextRequest) {
     log('Failed to create activity', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/activities/route.ts

@@ -120,14 +120,20 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:WARDS:TREND', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:WARDS:TREND', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
   const period = (searchParams.get('period') as 'month' | 'year') || 'month';
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customDate = searchParams.get('customDate') as string | undefined; // Step 2: Fix type to avoid 'string | null' error
 
   if (!['month', 'year'].includes(period)) {
@@ -213,7 +219,8 @@ export async function GET(req: NextRequest) {
         data: previousData,
       },
     });
-  } catch (error: unknown) { // Step 3: Type error as unknown
+  } catch (error: unknown) {
+    // Step 3: Type error as unknown
     log('REPORTS:WARDS:TREND', 'Failed to fetch ward activity trends', {
       error: error instanceof Error ? error.message : String(error),
     });

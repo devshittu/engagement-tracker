@@ -151,18 +151,26 @@ export async function POST(req: NextRequest) {
         (activity) => activity.departmentId !== userProfile.departmentId,
       );
       if (invalidActivities.length > 0) {
-        log('Forbidden: User does not have permission to activate some activities', {
-          invalidCount: invalidActivities.length,
-        });
+        log(
+          'Forbidden: User does not have permission to activate some activities',
+          {
+            invalidCount: invalidActivities.length,
+          },
+        );
         return NextResponse.json(
-          { error: 'Forbidden: You do not have permission to activate some activities' },
+          {
+            error:
+              'Forbidden: You do not have permission to activate some activities',
+          },
           { status: 403 },
         );
       }
     }
 
     // Create activity continuity logs for each activity
-    log('Creating batch activity continuity logs', { count: activityIds.length });
+    log('Creating batch activity continuity logs', {
+      count: activityIds.length,
+    });
     const logEntries = await prisma.activityContinuityLog.createMany({
       data: activityIds.map((activityId) => ({
         activityId,

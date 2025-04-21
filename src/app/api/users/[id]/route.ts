@@ -6,7 +6,7 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { supabase } from '@/lib/supabase';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
   console.log(
@@ -14,13 +14,13 @@ const log = (message: string, data?: any) =>
     data ? JSON.stringify(data, null, 2) : '',
   );
 
-export async function GET(
-  req: NextRequest,
-  { params }: Params,
-) {
+export async function GET(req: NextRequest, { params }: Params) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -51,13 +51,13 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: Params,
-) {
+export async function PUT(req: NextRequest, { params }: Params) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4; additional checks will be manual
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -70,14 +70,22 @@ export async function PUT(
   let roleId: number | undefined = undefined;
 
   try {
-    const { email: reqEmail, departmentId: deptId, roleId: rId } = await req.json();
+    const {
+      email: reqEmail,
+      departmentId: deptId,
+      roleId: rId,
+    } = await req.json();
     email = reqEmail;
     departmentId = deptId;
     roleId = rId;
 
     log('Updating user', { id, email, departmentId, roleId });
 
-    if (!email || !Number.isInteger(departmentId) || !Number.isInteger(roleId)) {
+    if (
+      !email ||
+      !Number.isInteger(departmentId) ||
+      !Number.isInteger(roleId)
+    ) {
       log('Invalid user data');
       return NextResponse.json({ error: 'Invalid user data' }, { status: 400 });
     }
@@ -149,13 +157,13 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: Params,
-) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 

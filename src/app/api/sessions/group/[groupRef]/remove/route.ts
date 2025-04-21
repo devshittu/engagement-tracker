@@ -1,14 +1,16 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionType, SessionStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: Promise <{ groupRef: string }> };
+type Params = { params: Promise<{ groupRef: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS/GROUP/REMOVE] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS/GROUP/REMOVE] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function POST(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -46,7 +48,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     });
 
     if (!session) {
-      log('No active session found for this user in the group', { groupRef, admissionId });
+      log('No active session found for this user in the group', {
+        groupRef,
+        admissionId,
+      });
       return NextResponse.json(
         { error: 'No active session found for this user in the group' },
         { status: 404 },
@@ -74,14 +79,23 @@ export async function POST(req: NextRequest, { params }: Params) {
       updatedAt: updatedSession.updatedAt?.toISOString() || null,
     });
   } catch (error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      log('Session not found', { groupRef, admissionId: admissionId || 'undefined' });
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      log('Session not found', {
+        groupRef,
+        admissionId: admissionId || 'undefined',
+      });
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
     log('Failed to remove user from group session', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to remove user from group session' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to remove user from group session' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/sessions/group/[groupRef]/remove/route.ts

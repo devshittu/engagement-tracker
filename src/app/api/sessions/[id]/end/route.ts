@@ -6,10 +6,13 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionStatus } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 
-type Params = { params: Promise<{ id: string }>  };
+type Params = { params: Promise<{ id: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS/END] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS/END] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { id } = await params;
@@ -48,14 +51,20 @@ export async function POST(req: NextRequest, { params }: Params) {
       updatedAt: session.updatedAt?.toISOString() || null,
     });
   } catch (error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
       log('Session not found', { id: sessionId });
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
     log('Failed to end session', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to end session' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to end session' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/sessions/[id]/end/route.ts

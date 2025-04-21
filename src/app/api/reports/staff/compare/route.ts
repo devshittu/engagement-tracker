@@ -120,15 +120,19 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:STAFF:COMPARE', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:STAFF:COMPARE', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
   const userId1 = searchParams.get('userId1') as string | undefined; // Step 2: Fix type to avoid 'string | null' error
   const userId2 = searchParams.get('userId2') as string | undefined; // Step 2: Fix type to avoid 'string | null' error
-  const period = (searchParams.get('period') as 'week' | 'month' | 'year') || 'month';
+  const period =
+    (searchParams.get('period') as 'week' | 'month' | 'year') || 'month';
 
   if (!userId1 || !userId2) {
     log('REPORTS:STAFF:COMPARE', 'Missing user IDs', { userId1, userId2 });
@@ -188,7 +192,9 @@ export async function GET(req: NextRequest) {
       const uniqueActivities = new Set(
         sessions.map((s: any) => s.activityLog.activityId),
       ).size;
-      const groupSessions = sessions.filter((s: any) => s.type === 'GROUP').length;
+      const groupSessions = sessions.filter(
+        (s: any) => s.type === 'GROUP',
+      ).length;
       const oneToOneSessions = sessions.filter(
         (s: any) => s.type === 'ONE_TO_ONE',
       ).length;
@@ -219,7 +225,8 @@ export async function GET(req: NextRequest) {
       endDate: currentEnd.toISOString(),
       comparison,
     });
-  } catch (error: unknown) { // Step 4: Type error as unknown
+  } catch (error: unknown) {
+    // Step 4: Type error as unknown
     log('REPORTS:STAFF:COMPARE', 'Failed to fetch staff comparison', {
       error: error instanceof Error ? error.message : String(error),
     });

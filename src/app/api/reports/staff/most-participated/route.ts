@@ -98,8 +98,11 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:STAFF:MOST-PARTICIPATED', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:STAFF:MOST-PARTICIPATED', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -170,7 +173,8 @@ export async function GET(req: NextRequest) {
       data,
       top,
     });
-  } catch (error: unknown) { // Step 3: Type error as unknown
+  } catch (error: unknown) {
+    // Step 3: Type error as unknown
     log(
       'REPORTS:STAFF:MOST-PARTICIPATED',
       'Failed to fetch most participated staff',

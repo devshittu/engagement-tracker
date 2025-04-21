@@ -136,14 +136,21 @@ import { getPeriodDates, log } from '@/lib/reportUtils';
 import { format } from 'date-fns';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:SESSIONS:TREND', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:SESSIONS:TREND', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
-  const period = (searchParams.get('period') as 'day' | 'week' | 'month' | 'year') || 'week';
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const period =
+    (searchParams.get('period') as 'day' | 'week' | 'month' | 'year') || 'week';
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customDate = searchParams.get('customDate') as string | undefined;
 
   if (!['day', 'week', 'month', 'year'].includes(period)) {
@@ -155,11 +162,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { currentStart, currentEnd, previousStart, previousEnd } = getPeriodDates(
-      period,
-      compareTo,
-      customDate,
-    );
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getPeriodDates(period, compareTo, customDate);
     log('REPORTS:SESSIONS:TREND', 'Fetching session trends', {
       period,
       compareTo,

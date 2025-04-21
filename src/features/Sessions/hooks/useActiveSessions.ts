@@ -55,7 +55,8 @@ export const useActiveSessions = ({
 }: FetchParams) =>
   useQuery({
     queryKey: ['activeSessions', { sortBy, order, type, groupByGroupRef }],
-    queryFn: () => fetchActiveSessions({ sortBy, order, type, groupByGroupRef }),
+    queryFn: () =>
+      fetchActiveSessions({ sortBy, order, type, groupByGroupRef }),
     staleTime: 1000 * 60,
     select: (data: ActiveSessionsResponse) => data, // Explicitly return data as-is
   });

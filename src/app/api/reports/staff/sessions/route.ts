@@ -114,8 +114,6 @@
 //   }
 // }
 
-
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getPeriodDates, log } from '@/lib/reportUtils';
@@ -124,13 +122,17 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:STAFF:SESSIONS', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:STAFF:SESSIONS', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
-  const period = (searchParams.get('period') as 'day' | 'week' | 'month') || 'week';
+  const period =
+    (searchParams.get('period') as 'day' | 'week' | 'month') || 'week';
   const date = searchParams.get('date') as string | undefined; // Step 2: Fix type to avoid 'string | null' error
 
   if (!['day', 'week', 'month'].includes(period)) {
@@ -217,14 +219,11 @@ export async function GET(req: NextRequest) {
       data,
       totals,
     });
-  } catch (error: unknown) { // Step 4: Type error as unknown
-    log(
-      'REPORTS:STAFF:SESSIONS',
-      'Failed to fetch staff session metrics',
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-    );
+  } catch (error: unknown) {
+    // Step 4: Type error as unknown
+    log('REPORTS:STAFF:SESSIONS', 'Failed to fetch staff session metrics', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: 'Failed to fetch staff session metrics' },
       { status: 500 },

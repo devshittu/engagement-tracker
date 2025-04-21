@@ -115,14 +115,21 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { getPeriodDates, log } from '@/lib/reportUtils';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:ADMISSIONS:COUNT', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:ADMISSIONS:COUNT', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
-  const period = (searchParams.get('period') as 'week' | 'month' | 'year') || 'month';
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const period =
+    (searchParams.get('period') as 'week' | 'month' | 'year') || 'month';
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customDate = searchParams.get('customDate') as string | undefined; // Fixed: string | undefined instead of string | null
 
   if (!['week', 'month', 'year'].includes(period)) {
@@ -134,11 +141,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { currentStart, currentEnd, previousStart, previousEnd } = getPeriodDates(
-      period,
-      compareTo,
-      customDate,
-    );
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getPeriodDates(period, compareTo, customDate);
     log('REPORTS:ADMISSIONS:COUNT', 'Fetching admission counts', {
       period,
       compareTo,

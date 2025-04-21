@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(req: NextRequest) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -39,15 +42,24 @@ export async function GET(req: NextRequest) {
       activityLog: {
         ...session.activityLog,
         startDate: session.activityLog.startDate.toISOString(),
-        discontinuedDate: session.activityLog.discontinuedDate?.toISOString() || null,
+        discontinuedDate:
+          session.activityLog.discontinuedDate?.toISOString() || null,
       },
     }));
 
     log('Sessions fetched successfully', { count: sessions.length, total });
-    return NextResponse.json({ sessions: serialized, total, page, pageSize }, { status: 200 });
+    return NextResponse.json(
+      { sessions: serialized, total, page, pageSize },
+      { status: 200 },
+    );
   } catch (error: unknown) {
-    log('Failed to fetch sessions', { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
+    log('Failed to fetch sessions', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: 'Failed to fetch sessions' },
+      { status: 500 },
+    );
   }
 }
 
@@ -59,7 +71,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { type, admissionId, activityLogId, groupRef } = body;
 
-  if (!type || (type === 'ONE_TO_ONE' && (!admissionId || !activityLogId)) || (type === 'GROUP' && !groupRef)) {
+  if (
+    !type ||
+    (type === 'ONE_TO_ONE' && (!admissionId || !activityLogId)) ||
+    (type === 'GROUP' && !groupRef)
+  ) {
     log('Invalid input', { type, admissionId, activityLogId, groupRef });
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
@@ -85,21 +101,30 @@ export async function POST(req: NextRequest) {
     });
 
     log('Session created successfully', { id: session.id });
-    return NextResponse.json({
-      ...session,
-      timeIn: session.timeIn.toISOString(),
-      timeOut: session.timeOut?.toISOString() || null,
-      createdAt: session.createdAt.toISOString(),
-      updatedAt: session.updatedAt?.toISOString() || null,
-      activityLog: {
-        ...session.activityLog,
-        startDate: session.activityLog.startDate.toISOString(),
-        discontinuedDate: session.activityLog.discontinuedDate?.toISOString() || null,
+    return NextResponse.json(
+      {
+        ...session,
+        timeIn: session.timeIn.toISOString(),
+        timeOut: session.timeOut?.toISOString() || null,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt?.toISOString() || null,
+        activityLog: {
+          ...session.activityLog,
+          startDate: session.activityLog.startDate.toISOString(),
+          discontinuedDate:
+            session.activityLog.discontinuedDate?.toISOString() || null,
+        },
       },
-    }, { status: 201 });
+      { status: 201 },
+    );
   } catch (error: unknown) {
-    log('Failed to create session', { error: error instanceof Error ? error.message : String(error) });
-    return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
+    log('Failed to create session', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: 'Failed to create session' },
+      { status: 500 },
+    );
   }
 }
 

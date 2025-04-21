@@ -107,8 +107,11 @@ import { startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 import { log } from '@/lib/reportUtils';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:SESSIONS:METRICS:DASHBOARD', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:SESSIONS:METRICS:DASHBOARD', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -116,7 +119,9 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
     const currentWeekEnd = endOfWeek(now, { weekStartsOn: 1 });
-    const previousWeekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+    const previousWeekStart = startOfWeek(subWeeks(now, 1), {
+      weekStartsOn: 1,
+    });
     const previousWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
 
     log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Fetching dashboard metrics');
@@ -159,7 +164,9 @@ export async function GET(req: NextRequest) {
         value: currentSessionCount,
         change:
           previousSessionCount > 0
-            ? ((currentSessionCount - previousSessionCount) / previousSessionCount) * 100
+            ? ((currentSessionCount - previousSessionCount) /
+                previousSessionCount) *
+              100
             : 0,
         positive: currentSessionCount >= previousSessionCount,
       },
@@ -177,13 +184,16 @@ export async function GET(req: NextRequest) {
         value: currentAdmissions,
         change:
           previousAdmissions > 0
-            ? ((currentAdmissions - previousAdmissions) / previousAdmissions) * 100
+            ? ((currentAdmissions - previousAdmissions) / previousAdmissions) *
+              100
             : 0,
         positive: currentAdmissions >= previousAdmissions,
       },
     ];
 
-    log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Dashboard metrics fetched', { metrics });
+    log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Dashboard metrics fetched', {
+      metrics,
+    });
     return NextResponse.json(metrics);
   } catch (error: unknown) {
     log('REPORTS:SESSIONS:METRICS:DASHBOARD', 'Failed to fetch metrics', error);

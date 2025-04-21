@@ -9,8 +9,9 @@ const log = (message: string, data?: any) =>
     data ? JSON.stringify(data, null, 2) : '',
   );
 
-export async function GET(req: NextRequest, 
-  
+export async function GET(
+  req: NextRequest,
+
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params; // Await the Promise
@@ -24,10 +25,15 @@ export async function GET(req: NextRequest,
   }
 
   try {
-    const reason = await prisma.declineReason.findUnique({ where: { id:dRId } });
+    const reason = await prisma.declineReason.findUnique({
+      where: { id: dRId },
+    });
     if (!reason) {
       log('Decline reason not found', { id });
-      return NextResponse.json({ error: 'Decline reason not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Decline reason not found' },
+        { status: 404 },
+      );
     }
     log('Fetched decline reason', { id });
     return NextResponse.json(reason);
@@ -42,8 +48,9 @@ export async function GET(req: NextRequest,
   }
 }
 
-export async function PUT(req: NextRequest, 
-  
+export async function PUT(
+  req: NextRequest,
+
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params; // Await the Promise
@@ -83,21 +90,20 @@ export async function PUT(req: NextRequest,
   }
 }
 
-export async function DELETE(req: NextRequest, 
-  
+export async function DELETE(
+  req: NextRequest,
+
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params; // Await the Promise
   const authResult = await authenticateRequest(req, 4, undefined, log);
   if (authResult instanceof NextResponse) return authResult;
 
-  
   const dRId = parseInt(id, 10);
   if (isNaN(dRId)) {
     log('Invalid ID', { id: dRId });
     return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
   }
-
 
   try {
     await prisma.declineReason.delete({ where: { id: dRId } });

@@ -19,8 +19,10 @@ export const useActiveActivities = () => {
     queryKey: ['activeActivities'],
     queryFn: async () => {
       logger.debug('Fetching active activity logs');
-      const response = await apiClient.get<ActivityLog[]>('/api/activities/active');
-       const logs = response.map((log) => ({
+      const response = await apiClient.get<ActivityLog[]>(
+        '/api/activities/active',
+      );
+      const logs = response.map((log) => ({
         ...log,
         startDate: new Date(log.startDate).toISOString(),
       }));

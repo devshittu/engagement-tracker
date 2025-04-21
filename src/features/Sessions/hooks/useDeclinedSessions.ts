@@ -4,7 +4,9 @@ import { apiClient } from '@/lib/api-client';
 import { DeclinedSession } from '../types';
 
 const fetchDeclinedSessions = async (): Promise<DeclinedSession[]> => {
-  const response: DeclinedSession[] = await apiClient.get('/api/declined-sessions');
+  const response: DeclinedSession[] = await apiClient.get(
+    '/api/declined-sessions',
+  );
   return response;
 };
 

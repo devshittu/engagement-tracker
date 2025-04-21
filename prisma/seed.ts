@@ -30,7 +30,7 @@ async function main() {
     log('Clearing existing data...');
     await prisma.$transaction([
       prisma.declinedSession.deleteMany(), // Added for new model
-      prisma.declineReason.deleteMany(),  // Added for new model
+      prisma.declineReason.deleteMany(), // Added for new model
       prisma.session.deleteMany(),
       prisma.activityContinuityLog.deleteMany(),
       prisma.admission.deleteMany(),
@@ -108,24 +108,92 @@ async function main() {
   try {
     await prisma.role.createMany({
       data: [
-        { name: 'Psychologist', level: 1, departmentId: deptMap.get('Psychology')! },
-        { name: 'Senior Psychologist', level: 2, departmentId: deptMap.get('Psychology')! },
-        { name: 'Site Lead', level: 3, departmentId: deptMap.get('Psychology')! },
-        { name: 'Director', level: 4, departmentId: deptMap.get('Psychology')! },
-        { name: 'Therapist', level: 1, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Senior Therapist', level: 2, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Site Lead', level: 3, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Director', level: 4, departmentId: deptMap.get('Occupational Therapy')! },
-        { name: 'Coordinator', level: 1, departmentId: deptMap.get('Activity Coordinator')! },
-        { name: 'Senior Coordinator', level: 2, departmentId: deptMap.get('Activity Coordinator')! },
-        { name: 'Site Lead', level: 3, departmentId: deptMap.get('Activity Coordinator')! },
-        { name: 'Director', level: 4, departmentId: deptMap.get('Activity Coordinator')! },
+        {
+          name: 'Psychologist',
+          level: 1,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Senior Psychologist',
+          level: 2,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Site Lead',
+          level: 3,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Director',
+          level: 4,
+          departmentId: deptMap.get('Psychology')!,
+        },
+        {
+          name: 'Therapist',
+          level: 1,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Senior Therapist',
+          level: 2,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Site Lead',
+          level: 3,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Director',
+          level: 4,
+          departmentId: deptMap.get('Occupational Therapy')!,
+        },
+        {
+          name: 'Coordinator',
+          level: 1,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
+        {
+          name: 'Senior Coordinator',
+          level: 2,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
+        {
+          name: 'Site Lead',
+          level: 3,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
+        {
+          name: 'Director',
+          level: 4,
+          departmentId: deptMap.get('Activity Coordinator')!,
+        },
         { name: 'Nurse', level: 1, departmentId: deptMap.get('Nursing')! },
-        { name: 'Senior Nurse', level: 2, departmentId: deptMap.get('Nursing')! },
-        { name: 'Clinical Team Lead', level: 3, departmentId: deptMap.get('Nursing')! },
-        { name: 'Ward Manager', level: 4, departmentId: deptMap.get('Nursing')! },
-        { name: 'Clinical Service Manager', level: 5, departmentId: deptMap.get('Nursing')! },
-        { name: 'Super Admin', level: 10, departmentId: deptMap.get('Psychology')! },
+        {
+          name: 'Senior Nurse',
+          level: 2,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Clinical Team Lead',
+          level: 3,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Ward Manager',
+          level: 4,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Clinical Service Manager',
+          level: 5,
+          departmentId: deptMap.get('Nursing')!,
+        },
+        {
+          name: 'Super Admin',
+          level: 10,
+          departmentId: deptMap.get('Psychology')!,
+        },
       ],
       skipDuplicates: true,
     });
@@ -143,24 +211,96 @@ async function main() {
   const level1to4Users: string[] = [];
   try {
     const exampleUsers = [
-      { email: 'superadmin@example.com', role: 'Super Admin', dept: 'Psychology' },
-      { email: 'director.psych1@example.com', role: 'Director', dept: 'Psychology' },
-      { email: 'sitelead.psych1@example.com', role: 'Site Lead', dept: 'Psychology' },
-      { email: 'senior.psych1@example.com', role: 'Senior Psychologist', dept: 'Psychology' },
-      { email: 'psychologist1@example.com', role: 'Psychologist', dept: 'Psychology' },
-      { email: 'psychologist2@example.com', role: 'Psychologist', dept: 'Psychology' },
-      { email: 'director.ot1@example.com', role: 'Director', dept: 'Occupational Therapy' },
-      { email: 'sitelead.ot1@example.com', role: 'Site Lead', dept: 'Occupational Therapy' },
-      { email: 'senior.ot1@example.com', role: 'Senior Therapist', dept: 'Occupational Therapy' },
-      { email: 'therapist1@example.com', role: 'Therapist', dept: 'Occupational Therapy' },
-      { email: 'therapist2@example.com', role: 'Therapist', dept: 'Occupational Therapy' },
-      { email: 'director.ac1@example.com', role: 'Director', dept: 'Activity Coordinator' },
-      { email: 'sitelead.ac1@example.com', role: 'Site Lead', dept: 'Activity Coordinator' },
-      { email: 'senior.ac1@example.com', role: 'Senior Coordinator', dept: 'Activity Coordinator' },
-      { email: 'coordinator1@example.com', role: 'Coordinator', dept: 'Activity Coordinator' },
-      { email: 'coordinator2@example.com', role: 'Coordinator', dept: 'Activity Coordinator' },
-      { email: 'manager.nurse1@example.com', role: 'Ward Manager', dept: 'Nursing' },
-      { email: 'senior.nurse1@example.com', role: 'Senior Nurse', dept: 'Nursing' },
+      {
+        email: 'superadmin@example.com',
+        role: 'Super Admin',
+        dept: 'Psychology',
+      },
+      {
+        email: 'director.psych1@example.com',
+        role: 'Director',
+        dept: 'Psychology',
+      },
+      {
+        email: 'sitelead.psych1@example.com',
+        role: 'Site Lead',
+        dept: 'Psychology',
+      },
+      {
+        email: 'senior.psych1@example.com',
+        role: 'Senior Psychologist',
+        dept: 'Psychology',
+      },
+      {
+        email: 'psychologist1@example.com',
+        role: 'Psychologist',
+        dept: 'Psychology',
+      },
+      {
+        email: 'psychologist2@example.com',
+        role: 'Psychologist',
+        dept: 'Psychology',
+      },
+      {
+        email: 'director.ot1@example.com',
+        role: 'Director',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'sitelead.ot1@example.com',
+        role: 'Site Lead',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'senior.ot1@example.com',
+        role: 'Senior Therapist',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'therapist1@example.com',
+        role: 'Therapist',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'therapist2@example.com',
+        role: 'Therapist',
+        dept: 'Occupational Therapy',
+      },
+      {
+        email: 'director.ac1@example.com',
+        role: 'Director',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'sitelead.ac1@example.com',
+        role: 'Site Lead',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'senior.ac1@example.com',
+        role: 'Senior Coordinator',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'coordinator1@example.com',
+        role: 'Coordinator',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'coordinator2@example.com',
+        role: 'Coordinator',
+        dept: 'Activity Coordinator',
+      },
+      {
+        email: 'manager.nurse1@example.com',
+        role: 'Ward Manager',
+        dept: 'Nursing',
+      },
+      {
+        email: 'senior.nurse1@example.com',
+        role: 'Senior Nurse',
+        dept: 'Nursing',
+      },
       { email: 'nurse1@example.com', role: 'Nurse', dept: 'Nursing' },
       { email: 'nurse2@example.com', role: 'Nurse', dept: 'Nursing' },
     ];
@@ -230,17 +370,61 @@ async function main() {
   let continuityLogs: any[];
   try {
     const activityData = [
-      { name: 'Chat Cafe', description: 'A relaxed social gathering over tea', departmentId: null },
-      { name: 'My Coping Toolbox', description: 'Workshop on mental health strategies', departmentId: deptMap.get('Psychology') },
-      { name: 'Mindfulness', description: 'Guided meditation sessions', departmentId: null },
-      { name: 'Art Therapy', description: 'Creative expression for healing', departmentId: deptMap.get('Occupational Therapy') },
-      { name: 'Road to Recovery', description: 'Support group for rehabilitation', departmentId: deptMap.get('Psychology') },
-      { name: 'Comfort in the Community', description: 'Community integration activities', departmentId: null },
-      { name: 'Social Hub', description: 'Interactive social space', departmentId: null },
-      { name: 'Cyber Cafe', description: 'Digital skills and leisure', departmentId: deptMap.get('Activity Coordinator') },
-      { name: 'Gym', description: 'Physical fitness sessions', departmentId: null },
-      { name: 'Community Visit', description: 'Outings to local areas', departmentId: null },
-      { name: '1:1', description: 'Personalized support sessions', departmentId: deptMap.get('Nursing') },
+      {
+        name: 'Chat Cafe',
+        description: 'A relaxed social gathering over tea',
+        departmentId: null,
+      },
+      {
+        name: 'My Coping Toolbox',
+        description: 'Workshop on mental health strategies',
+        departmentId: deptMap.get('Psychology'),
+      },
+      {
+        name: 'Mindfulness',
+        description: 'Guided meditation sessions',
+        departmentId: null,
+      },
+      {
+        name: 'Art Therapy',
+        description: 'Creative expression for healing',
+        departmentId: deptMap.get('Occupational Therapy'),
+      },
+      {
+        name: 'Road to Recovery',
+        description: 'Support group for rehabilitation',
+        departmentId: deptMap.get('Psychology'),
+      },
+      {
+        name: 'Comfort in the Community',
+        description: 'Community integration activities',
+        departmentId: null,
+      },
+      {
+        name: 'Social Hub',
+        description: 'Interactive social space',
+        departmentId: null,
+      },
+      {
+        name: 'Cyber Cafe',
+        description: 'Digital skills and leisure',
+        departmentId: deptMap.get('Activity Coordinator'),
+      },
+      {
+        name: 'Gym',
+        description: 'Physical fitness sessions',
+        departmentId: null,
+      },
+      {
+        name: 'Community Visit',
+        description: 'Outings to local areas',
+        departmentId: null,
+      },
+      {
+        name: '1:1',
+        description: 'Personalized support sessions',
+        departmentId: deptMap.get('Nursing'),
+      },
     ];
 
     for (const activity of activityData) {
@@ -354,7 +538,7 @@ async function main() {
     log('Error creating service users and admissions', error);
     throw new Error('Failed to create service users and admissions');
   }
-// Sessions with Group Clustering and Declined Sessions
+  // Sessions with Group Clustering and Declined Sessions
   try {
     const groupSessions: {
       groupRef: string;
@@ -462,7 +646,9 @@ async function main() {
               declineReasonId: faker.helpers.arrayElement(
                 Array.from(declineReasonMap.values()),
               ),
-              description: faker.datatype.boolean() ? faker.lorem.sentence() : null,
+              description: faker.datatype.boolean()
+                ? faker.lorem.sentence()
+                : null,
             },
           });
         }
@@ -471,7 +657,9 @@ async function main() {
     log('Sessions created with group clustering and declined sessions', {
       totalSessions: await prisma.session.count(),
       declinedSessions: await prisma.declinedSession.count(),
-      cancelledSessions: await prisma.session.count({ where: { status: SessionStatus.CANCELLED } }),
+      cancelledSessions: await prisma.session.count({
+        where: { status: SessionStatus.CANCELLED },
+      }),
       groupSessions: totalGroupSessions,
     });
   } catch (error) {

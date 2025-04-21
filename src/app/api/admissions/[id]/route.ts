@@ -17,8 +17,11 @@ export async function GET(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -26,7 +29,10 @@ export async function GET(
 
   if (isNaN(admissionId)) {
     log('Invalid admission ID', { id });
-    return NextResponse.json({ error: 'Invalid admission ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid admission ID' },
+      { status: 400 },
+    );
   }
 
   try {
@@ -38,7 +44,10 @@ export async function GET(
 
     if (!admission) {
       log('Admission not found', { id: admissionId });
-      return NextResponse.json({ error: 'Admission not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Admission not found' },
+        { status: 404 },
+      );
     }
 
     log('Admission fetched successfully', { id: admission.id });
@@ -60,8 +69,11 @@ export async function PUT(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -69,7 +81,10 @@ export async function PUT(
 
   if (isNaN(admissionId)) {
     log('Invalid admission ID', { id });
-    return NextResponse.json({ error: 'Invalid admission ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid admission ID' },
+      { status: 400 },
+    );
   }
 
   // Initialize variables to avoid undefined errors
@@ -134,8 +149,11 @@ export async function DELETE(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -143,7 +161,10 @@ export async function DELETE(
 
   if (isNaN(admissionId)) {
     log('Invalid admission ID', { id });
-    return NextResponse.json({ error: 'Invalid admission ID' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid admission ID' },
+      { status: 400 },
+    );
   }
 
   try {
@@ -164,7 +185,9 @@ export async function DELETE(
         );
       }
       if (error.code === 'P2003') {
-        log('Admission cannot be deleted due to associated records', { id: admissionId });
+        log('Admission cannot be deleted due to associated records', {
+          id: admissionId,
+        });
         return NextResponse.json(
           { error: 'Admission cannot be deleted due to associated records' },
           { status: 409 },

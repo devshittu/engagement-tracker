@@ -32,7 +32,9 @@ const SearchServiceUsers: React.FC = () => {
 
   const [showOneToOneModal, setShowOneToOneModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
-  const [preselectedUserId, setPreselectedUserId] = useState<number | undefined>(undefined);
+  const [preselectedUserId, setPreselectedUserId] = useState<
+    number | undefined
+  >(undefined);
 
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);

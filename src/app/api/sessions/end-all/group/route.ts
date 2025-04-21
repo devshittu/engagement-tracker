@@ -5,7 +5,10 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { SessionType, SessionStatus } from '@prisma/client';
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS/END-ALL/GROUP] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS/END-ALL/GROUP] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function POST(req: NextRequest) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -34,7 +37,10 @@ export async function POST(req: NextRequest) {
     log('Failed to end group sessions', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to end group sessions' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to end group sessions' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/sessions/end-all/group/route.ts

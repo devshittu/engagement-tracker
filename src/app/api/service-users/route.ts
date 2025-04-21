@@ -6,7 +6,10 @@ import { authenticateRequest } from '@/lib/authMiddleware';
 import { Prisma } from '@prisma/client';
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SERVICE-USERS] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SERVICE-USERS] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function GET(req: NextRequest) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -18,7 +21,8 @@ export async function GET(req: NextRequest) {
   const status: 'admitted' | 'discharged' | 'all' =
     (searchParams.get('status') as 'admitted' | 'discharged' | 'all') || 'all';
   const sortBy: string = searchParams.get('sortBy') || 'name';
-  const order: 'asc' | 'desc' = searchParams.get('order') === 'desc' ? 'desc' : 'asc';
+  const order: 'asc' | 'desc' =
+    searchParams.get('order') === 'desc' ? 'desc' : 'asc';
   const groupByWard: boolean = searchParams.get('groupByWard') === 'true';
   const skip: number = (page - 1) * pageSize;
 
@@ -85,13 +89,19 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    log('Service users fetched successfully', { count: serviceUsers.length, total });
+    log('Service users fetched successfully', {
+      count: serviceUsers.length,
+      total,
+    });
     return NextResponse.json(responseData);
   } catch (error: unknown) {
     log('Failed to fetch service users', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to fetch service users' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch service users' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/service-users/route.ts

@@ -58,4 +58,4 @@ export const useSearchServiceUsers = ({
     enabled: q.trim().length > 0, // Only run the query if there's a search query
   });
 
-  // src/features/Search/hooks/useSearchServiceUsers.ts
+// src/features/Search/hooks/useSearchServiceUsers.ts

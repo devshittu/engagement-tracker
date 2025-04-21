@@ -14,8 +14,11 @@ const log = (message: string, data?: any) =>
 
 export async function GET(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -40,8 +43,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -53,23 +59,32 @@ export async function POST(req: NextRequest) {
   let roleId: number | undefined = undefined;
 
   try {
-    const { email: reqEmail, departmentId: deptId, roleId: rId } = await req.json();
+    const {
+      email: reqEmail,
+      departmentId: deptId,
+      roleId: rId,
+    } = await req.json();
     email = reqEmail;
     departmentId = deptId;
     roleId = rId;
 
     log('Creating user', { email, departmentId, roleId });
 
-    if (!email || !Number.isInteger(departmentId) || !Number.isInteger(roleId)) {
+    if (
+      !email ||
+      !Number.isInteger(departmentId) ||
+      !Number.isInteger(roleId)
+    ) {
       log('Invalid user data');
       return NextResponse.json({ error: 'Invalid user data' }, { status: 400 });
     }
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password: 'defaultPassword123!',
-      email_confirm: true,
-    });
+    const { data: authData, error: authError } =
+      await supabase.auth.admin.createUser({
+        email,
+        password: 'defaultPassword123!',
+        email_confirm: true,
+      });
     if (authError) {
       log('Failed to create user in Supabase', { error: authError.message });
       return NextResponse.json({ error: authError.message }, { status: 400 });

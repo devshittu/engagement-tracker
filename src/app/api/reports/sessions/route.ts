@@ -4,7 +4,6 @@
 // import { prisma } from '@/lib/prisma';
 // import { SessionType, SessionStatus } from '@prisma/client';
 
-
 // const log = (message: string, data?: any) =>
 //   console.log(
 //     `[API:SESSIONS] ${message}`,
@@ -167,7 +166,6 @@
 //     );
 //   }
 // }
-
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';

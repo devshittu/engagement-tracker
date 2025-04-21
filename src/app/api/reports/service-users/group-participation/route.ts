@@ -135,18 +135,27 @@ import { getPeriodDates, log } from '@/lib/reportUtils';
 import { Prisma } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) =>
+      log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
   const { searchParams } = new URL(req.url);
   const period = (searchParams.get('period') as 'month' | 'year') || 'month';
-  const compareTo = searchParams.get('compareTo') as 'last' | 'custom' | undefined;
+  const compareTo = searchParams.get('compareTo') as
+    | 'last'
+    | 'custom'
+    | undefined;
   const customDate = searchParams.get('customDate') as string | undefined;
 
   if (!['month', 'year'].includes(period)) {
-    log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', 'Invalid period', { period });
+    log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', 'Invalid period', {
+      period,
+    });
     return NextResponse.json(
       { error: 'Invalid period. Use month or year.' },
       { status: 400 },
@@ -154,15 +163,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { currentStart, currentEnd, previousStart, previousEnd } = getPeriodDates(
-      period,
-      compareTo,
-      customDate,
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getPeriodDates(period, compareTo, customDate);
+    log(
+      'REPORTS:SERVICE-USERS:GROUP-PARTICIPATION',
+      'Fetching group participation',
+      {
+        period,
+        compareTo,
+      },
     );
-    log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', 'Fetching group participation', {
-      period,
-      compareTo,
-    });
 
     const [currentGroups, previousGroups] = await Promise.all([
       prisma.session.groupBy({
@@ -224,10 +234,14 @@ export async function GET(req: NextRequest) {
           : 0,
     };
 
-    log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', 'Group participation fetched', {
-      currentGroups: currentData.length,
-      previousGroups: previousData.length,
-    });
+    log(
+      'REPORTS:SERVICE-USERS:GROUP-PARTICIPATION',
+      'Group participation fetched',
+      {
+        currentGroups: currentData.length,
+        previousGroups: previousData.length,
+      },
+    );
     return NextResponse.json({
       period,
       currentData,
@@ -235,7 +249,11 @@ export async function GET(req: NextRequest) {
       trend,
     });
   } catch (error: unknown) {
-    log('REPORTS:SERVICE-USERS:GROUP-PARTICIPATION', 'Failed to fetch group participation', error);
+    log(
+      'REPORTS:SERVICE-USERS:GROUP-PARTICIPATION',
+      'Failed to fetch group participation',
+      error,
+    );
     return NextResponse.json(
       { error: 'Failed to fetch group participation' },
       { status: 500 },

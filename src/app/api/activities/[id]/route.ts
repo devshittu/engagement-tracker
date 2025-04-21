@@ -37,11 +37,17 @@ export async function GET(
 
     if (!activity) {
       log('Activity not found', { id: activityId });
-      return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Activity not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && activity.departmentId !== userProfile.departmentId) {
+    if (
+      userRoleLevel < 3 &&
+      activity.departmentId !== userProfile.departmentId
+    ) {
       log('Forbidden: User does not have permission to view this activity');
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -52,7 +58,10 @@ export async function GET(
     log('Failed to fetch activity', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }
 
@@ -83,11 +92,17 @@ export async function PUT(
 
     if (!activity) {
       log('Activity not found', { id: activityId });
-      return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Activity not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && activity.departmentId !== userProfile.departmentId) {
+    if (
+      userRoleLevel < 3 &&
+      activity.departmentId !== userProfile.departmentId
+    ) {
       log('Forbidden: User does not have permission to update this activity');
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -109,13 +124,19 @@ export async function PUT(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         log('Activity not found', { id: activityId });
-        return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Activity not found' },
+          { status: 404 },
+        );
       }
     }
     log('Failed to update activity', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }
 
@@ -143,11 +164,17 @@ export async function DELETE(
 
     if (!activity) {
       log('Activity not found', { id: activityId });
-      return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Activity not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && activity.departmentId !== userProfile.departmentId) {
+    if (
+      userRoleLevel < 3 &&
+      activity.departmentId !== userProfile.departmentId
+    ) {
       log('Forbidden: User does not have permission to delete this activity');
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -162,13 +189,19 @@ export async function DELETE(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         log('Activity not found', { id: activityId });
-        return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Activity not found' },
+          { status: 404 },
+        );
       }
     }
     log('Failed to delete activity', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/activities/[id]/route.ts

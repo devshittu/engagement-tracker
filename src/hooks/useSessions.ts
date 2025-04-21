@@ -39,24 +39,20 @@ export const useSessions = ({
   order,
   groupBy = 'none',
 }: FetchSessionsParams) =>
-  useInfiniteQuery<
-    SessionsData,
-    Error,
-    SessionsData,
-    SessionsQueryKey,
-    number
-  >({
-    queryKey: ['sessions', { sortBy, order, groupBy }],
-    queryFn: fetchSessions,
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      if ('groupedData' in lastPage) {
-        return lastPage.pageParam + 1; // Assumes pageParam exists; adjust if API changes
-      } else {
-        const { page, pageSize, total } = lastPage;
-        const maxPage = Math.ceil(total / pageSize);
-        return page < maxPage ? page + 1 : undefined;
-      }
+  useInfiniteQuery<SessionsData, Error, SessionsData, SessionsQueryKey, number>(
+    {
+      queryKey: ['sessions', { sortBy, order, groupBy }],
+      queryFn: fetchSessions,
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => {
+        if ('groupedData' in lastPage) {
+          return lastPage.pageParam + 1; // Assumes pageParam exists; adjust if API changes
+        } else {
+          const { page, pageSize, total } = lastPage;
+          const maxPage = Math.ceil(total / pageSize);
+          return page < maxPage ? page + 1 : undefined;
+        }
+      },
     },
-  });
+  );
 // src/hooks/useSessions.ts

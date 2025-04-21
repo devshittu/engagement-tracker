@@ -166,8 +166,11 @@ import { authenticateRequest } from '@/lib/authMiddleware'; // Import the middle
 
 export async function GET(req: NextRequest) {
   // Step 1: Replace x-supabase-user with authenticateRequest
-  const authResult = await authenticateRequest(req, 0, undefined, (message, data) =>
-    log('REPORTS:STAFF:ENGAGEMENT:SUMMARY', message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    undefined,
+    (message, data) => log('REPORTS:STAFF:ENGAGEMENT:SUMMARY', message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -182,7 +185,8 @@ export async function GET(req: NextRequest) {
       ? parseISO(startDateParam)
       : startOfMonth(new Date());
     endDate = endOfMonth(startDate);
-  } catch (error: unknown) { // Step 3: Type error as unknown
+  } catch (error: unknown) {
+    // Step 3: Type error as unknown
     log('REPORTS:STAFF:ENGAGEMENT:SUMMARY', 'Invalid date format', {
       startDateParam,
       error: error instanceof Error ? error.message : String(error),
@@ -309,7 +313,8 @@ export async function GET(req: NextRequest) {
       sample: staffArray.slice(0, 1),
     });
     return NextResponse.json(response);
-  } catch (error: unknown) { // Step 5: Type error as unknown
+  } catch (error: unknown) {
+    // Step 5: Type error as unknown
     log('REPORTS:STAFF:ENGAGEMENT:SUMMARY', 'Failed to fetch data', {
       error: error instanceof Error ? error.message : String(error),
     });

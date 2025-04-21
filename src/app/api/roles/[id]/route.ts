@@ -17,8 +17,11 @@ export async function GET(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -60,8 +63,11 @@ export async function PUT(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -77,7 +83,12 @@ export async function PUT(
     const { name, level, departmentId: deptId } = await req.json();
     departmentId = deptId;
     // Step 2: Ensure departmentId is defined for logging
-    log('Updating role', { id: roleId, name, level, departmentId: departmentId ?? 'undefined' });
+    log('Updating role', {
+      id: roleId,
+      name,
+      level,
+      departmentId: departmentId ?? 'undefined',
+    });
 
     if (
       !name ||
@@ -105,7 +116,10 @@ export async function PUT(
         return NextResponse.json({ error: 'Role not found' }, { status: 404 });
       }
       if (error.code === 'P2003') {
-        log('Invalid department ID', { id: roleId, departmentId: departmentId ?? 'undefined' });
+        log('Invalid department ID', {
+          id: roleId,
+          departmentId: departmentId ?? 'undefined',
+        });
         return NextResponse.json(
           { error: 'Department not found' },
           { status: 404 },
@@ -128,8 +142,11 @@ export async function DELETE(
 ) {
   const { id } = await params; // Await the Promise
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 

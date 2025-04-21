@@ -41,8 +41,10 @@ const ActiveSessionsInfiniteClient: React.FC = () => {
     [data],
   );
 
-  if (isLoading) return <p className="text-center">Loading active sessions...</p>;
-  if (isError) return <p className="text-center text-error">Error: {error?.message}</p>;
+  if (isLoading)
+    return <p className="text-center">Loading active sessions...</p>;
+  if (isError)
+    return <p className="text-center text-error">Error: {error?.message}</p>;
 
   return (
     <div className="container mx-auto p-4">
@@ -65,13 +67,15 @@ const ActiveSessionsInfiniteClient: React.FC = () => {
                     {session.admission.serviceUser.name}
                   </h2>
                   <p className="text-sm">
-                    <strong>Activity:</strong> {session.activityLog.activity.name}
+                    <strong>Activity:</strong>{' '}
+                    {session.activityLog.activity.name}
                   </p>
                   <p className="text-sm">
                     <strong>Ward:</strong> {session.admission.ward.name}
                   </p>
                   <p className="text-sm">
-                    <strong>Time In:</strong> {new Date(session.timeIn).toLocaleString()}
+                    <strong>Time In:</strong>{' '}
+                    {new Date(session.timeIn).toLocaleString()}
                   </p>
                   <div className="my-4">
                     <ElapsedTime

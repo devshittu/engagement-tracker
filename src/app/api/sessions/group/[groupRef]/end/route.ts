@@ -9,7 +9,10 @@ import { Prisma } from '@prisma/client';
 type Params = { params: Promise<{ groupRef: string }> };
 
 const log = (message: string, data?: any) =>
-  console.log(`[API:SESSIONS/GROUP/END] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  console.log(
+    `[API:SESSIONS/GROUP/END] ${message}`,
+    data ? JSON.stringify(data, null, 2) : '',
+  );
 
 export async function POST(req: NextRequest, { params }: Params) {
   const authResult = await authenticateRequest(req, 0, undefined, log);
@@ -58,7 +61,10 @@ export async function POST(req: NextRequest, { params }: Params) {
       ),
     );
 
-    log('Group session ended successfully', { groupRef, count: updatedSessions.length });
+    log('Group session ended successfully', {
+      groupRef,
+      count: updatedSessions.length,
+    });
     return NextResponse.json(
       updatedSessions.map((session) => ({
         ...session,
@@ -72,7 +78,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     log('Failed to end group session', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to end group session' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to end group session' },
+      { status: 500 },
+    );
   }
 }
 // src/app/api/sessions/group/[groupRef]/end/route.ts

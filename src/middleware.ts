@@ -5,26 +5,44 @@ import { PUBLIC_ROUTES } from '@/config/routes';
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
-  const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+  const isPublicRoute = PUBLIC_ROUTES.some((route) =>
+    pathname.startsWith(route),
+  );
 
   console.log('Middleware: Path:', pathname);
   console.log('Middleware: Is public route:', isPublicRoute);
 
   const token = req.cookies.get('sb-access-token')?.value;
-  if (!token && !isPublicRoute && !pathname.startsWith('/login') && !pathname.startsWith('/api/auth')) {
+  if (
+    !token &&
+    !isPublicRoute &&
+    !pathname.startsWith('/login') &&
+    !pathname.startsWith('/api/auth')
+  ) {
     console.log('Middleware: No token found, redirecting to login');
-    const redirectUrl = encodeURIComponent(pathname + req.nextUrl.search || '/dashboard');
-    return NextResponse.redirect(new URL(`/login?next=${redirectUrl}`, req.url));
+    const redirectUrl = encodeURIComponent(
+      pathname + req.nextUrl.search || '/dashboard',
+    );
+    return NextResponse.redirect(
+      new URL(`/login?next=${redirectUrl}`, req.url),
+    );
   }
 
   let userProfile = null;
   if (token) {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    const {
+      data: { user },
+      error,
+    } = await supabaseAdmin.auth.getUser(token);
     if (error || !user) {
       console.log('Middleware: Invalid token', { error: error?.message });
       if (!isPublicRoute) {
-        const redirectUrl = encodeURIComponent(pathname + req.nextUrl.search || '/dashboard');
-        return NextResponse.redirect(new URL(`/login?next=${redirectUrl}`, req.url));
+        const redirectUrl = encodeURIComponent(
+          pathname + req.nextUrl.search || '/dashboard',
+        );
+        return NextResponse.redirect(
+          new URL(`/login?next=${redirectUrl}`, req.url),
+        );
       }
     } else {
       const { data, error: profileError } = await supabaseAdmin
@@ -34,10 +52,15 @@ export async function middleware(req: NextRequest) {
         .single();
 
       if (profileError || !data) {
-        console.log('Middleware: Failed to fetch profile', { error: profileError?.message });
+        console.log('Middleware: Failed to fetch profile', {
+          error: profileError?.message,
+        });
       } else {
         userProfile = data;
-        console.log('Middleware: User authenticated', { userId: user.id, roles: data.roles });
+        console.log('Middleware: User authenticated', {
+          userId: user.id,
+          roles: data.roles,
+        });
       }
     }
   }
@@ -51,6 +74,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
 // src/middleware.ts

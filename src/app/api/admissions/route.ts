@@ -200,7 +200,6 @@
 //   }
 // }
 
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
@@ -214,8 +213,11 @@ const log = (message: string, data?: any) =>
 
 export async function GET(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -240,8 +242,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -260,11 +265,17 @@ export async function POST(req: NextRequest) {
 
     if (!serviceUserId || !Number.isInteger(wardId)) {
       log('Invalid admission data');
-      return NextResponse.json({ error: 'Invalid admission data' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid admission data' },
+        { status: 400 },
+      );
     }
 
     if (!wardId) {
-      return NextResponse.json({ error: 'Ward ID is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Ward ID is required' },
+        { status: 400 },
+      );
     }
 
     const admission = await prisma.admission.create({

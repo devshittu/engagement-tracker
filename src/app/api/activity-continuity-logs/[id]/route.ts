@@ -1,6 +1,5 @@
 // src/app/api/activity-continuity-logs/[id]/route.ts
 
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { authenticateRequest } from '@/lib/authMiddleware';
@@ -37,11 +36,17 @@ export async function GET(
 
     if (!logEntry) {
       log('Continuity log not found', { id: logId });
-      return NextResponse.json({ error: 'Continuity log not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Continuity log not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && logEntry.activity.departmentId !== userProfile.departmentId) {
+    if (
+      userRoleLevel < 3 &&
+      logEntry.activity.departmentId !== userProfile.departmentId
+    ) {
       log('Forbidden: User does not have permission to view this log');
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -91,7 +96,13 @@ export async function PUT(
     reason = body.reason;
     duration = body.duration;
 
-    log('Updating continuity log', { id: logId, startDate, discontinuedDate, reason, duration });
+    log('Updating continuity log', {
+      id: logId,
+      startDate,
+      discontinuedDate,
+      reason,
+      duration,
+    });
 
     const logEntry = await prisma.activityContinuityLog.findUnique({
       where: { id: logId },
@@ -100,11 +111,17 @@ export async function PUT(
 
     if (!logEntry) {
       log('Continuity log not found', { id: logId });
-      return NextResponse.json({ error: 'Continuity log not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Continuity log not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && logEntry.activity.departmentId !== userProfile.departmentId) {
+    if (
+      userRoleLevel < 3 &&
+      logEntry.activity.departmentId !== userProfile.departmentId
+    ) {
       log('Forbidden: User does not have permission to update this log');
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -112,12 +129,17 @@ export async function PUT(
     const updateData: any = {};
     if (startDate !== undefined) updateData.startDate = new Date(startDate);
     if (discontinuedDate !== undefined)
-      updateData.discontinuedDate = discontinuedDate ? new Date(discontinuedDate) : null;
+      updateData.discontinuedDate = discontinuedDate
+        ? new Date(discontinuedDate)
+        : null;
     if (reason !== undefined) updateData.reason = reason || null;
     if (duration !== undefined) {
       if (!Number.isInteger(duration)) {
         log('Invalid duration');
-        return NextResponse.json({ error: 'Duration must be an integer' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Duration must be an integer' },
+          { status: 400 },
+        );
       }
       updateData.duration = duration;
     }
@@ -138,7 +160,10 @@ export async function PUT(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         log('Continuity log not found', { id: logId });
-        return NextResponse.json({ error: 'Continuity log not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Continuity log not found' },
+          { status: 404 },
+        );
       }
     }
     log('Failed to update continuity log', {
@@ -176,11 +201,17 @@ export async function DELETE(
 
     if (!logEntry) {
       log('Continuity log not found', { id: logId });
-      return NextResponse.json({ error: 'Continuity log not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Continuity log not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && logEntry.activity.departmentId !== userProfile.departmentId) {
+    if (
+      userRoleLevel < 3 &&
+      logEntry.activity.departmentId !== userProfile.departmentId
+    ) {
       log('Forbidden: User does not have permission to delete this log');
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -190,12 +221,17 @@ export async function DELETE(
     });
 
     log('Continuity log deleted successfully', { id: logId });
-    return NextResponse.json({ message: 'Continuity log deleted successfully' });
+    return NextResponse.json({
+      message: 'Continuity log deleted successfully',
+    });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') {
         log('Continuity log not found', { id: logId });
-        return NextResponse.json({ error: 'Continuity log not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Continuity log not found' },
+          { status: 404 },
+        );
       }
     }
     log('Failed to delete continuity log', {

@@ -10,7 +10,8 @@ const DeclinedSessionsReport: React.FC = () => {
   if (isLoading) {
     return (
       <div className="text-center text-gray-500 dark:text-gray-400">
-        <span className="loading loading-spinner loading-lg"></span> Loading declined sessions...
+        <span className="loading loading-spinner loading-lg"></span> Loading
+        declined sessions...
       </div>
     );
   }
@@ -46,7 +47,8 @@ const DeclinedSessionsReport: React.FC = () => {
               {session.session.admission.serviceUser.name}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              <strong>Activity:</strong> {session.session.activityLog.activity.name}
+              <strong>Activity:</strong>{' '}
+              {session.session.activityLog.activity.name}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               <strong>Reason:</strong> {session.declineReason.name}

@@ -12,8 +12,11 @@ const log = (message: string, data?: any) =>
 
 export async function GET(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleLevel: 4
-  const authResult = await authenticateRequest(req, 4, undefined, (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    4,
+    undefined,
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -36,8 +39,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   // Step 1: Use authenticateRequest with requiredRoleName: 'Super Admin'
-  const authResult = await authenticateRequest(req, 0, 'Super Admin', (message, data) =>
-    log(message, data),
+  const authResult = await authenticateRequest(
+    req,
+    0,
+    'Super Admin',
+    (message, data) => log(message, data),
   );
   if (authResult instanceof NextResponse) return authResult;
 
@@ -62,7 +68,10 @@ export async function POST(req: NextRequest) {
       data: { name },
     });
 
-    log('Department created successfully', { id: department.id, name: department.name });
+    log('Department created successfully', {
+      id: department.id,
+      name: department.name,
+    });
     return NextResponse.json(department, { status: 201 });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

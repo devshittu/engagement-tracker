@@ -223,7 +223,10 @@ export async function GET(req: NextRequest) {
         skip,
         take: pageSize,
         orderBy: { startDate: 'desc' },
-        include: { activity: { include: { department: true } }, createdBy: true },
+        include: {
+          activity: { include: { department: true } },
+          createdBy: true,
+        },
       }),
       prisma.activityContinuityLog.count({ where: whereClause }),
     ]);
@@ -283,12 +286,20 @@ export async function POST(req: NextRequest) {
 
     if (!activity) {
       log('Activity not found', { activityId });
-      return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Activity not found' },
+        { status: 404 },
+      );
     }
 
     const userRoleLevel = userProfile.roles[0].level;
-    if (userRoleLevel < 3 && activity.departmentId !== userProfile.departmentId) {
-      log('Forbidden: User does not have permission to create a log for this activity');
+    if (
+      userRoleLevel < 3 &&
+      activity.departmentId !== userProfile.departmentId
+    ) {
+      log(
+        'Forbidden: User does not have permission to create a log for this activity',
+      );
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -315,7 +326,10 @@ export async function POST(req: NextRequest) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2003') {
         log('Invalid activity ID', { activityId });
-        return NextResponse.json({ error: 'Activity not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Activity not found' },
+          { status: 404 },
+        );
       }
     }
     log('Failed to create continuity log', {
