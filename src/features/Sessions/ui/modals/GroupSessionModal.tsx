@@ -132,7 +132,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
     if (selectedActivityLogId || existingSessionId) {
       checkExistingSession();
     }
-  }, [checkExistingSession]);
+  }, [checkExistingSession, existingSessionId, selectedActivityLogId]);
 
   const handleAddUser = (user: ServiceUserOption) => {
     logger.debug('Adding user to selection', {
@@ -336,37 +336,38 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input input-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-500 transition-all duration-300"
               />
+
               {userOptions.length > 0 && (
                 <ul className="mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md max-h-40 overflow-y-auto">
                   {userOptions.map((user) => (
-                    <li
-                      key={user.id}
-                      onClick={() => handleAddUser(user)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleAddUser(user);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="button"
-                      className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center"
-                    >
-                      <span className="font-medium">{user.name}</span>
-                      <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                        (Ward: {user.ward}, NHS: {user.nhsNumber})
-                      </span>
+                    <li key={user.id}>
+                      <button
+                        onClick={() => handleAddUser(user)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleAddUser(user);
+                          }
+                        }}
+                        tabIndex={0}
+                        className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center w-full text-left"
+                      >
+                        <span className="font-medium">{user.name}</span>
+                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                          (Ward: {user.ward}, NHS: {user.nhsNumber})
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
             <div className="form-control">
-              <label className="label">
+              <div className="label">
                 <span className="label-text font-medium text-gray-900 dark:text-gray-100">
                   Selected Users
                 </span>
-              </label>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {selectedUsers.map((user) => (
                   <div
