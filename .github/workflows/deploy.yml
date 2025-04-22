@@ -16,7 +16,7 @@ jobs:
       # Although the generated schema will have hardcoded URLs, we still pass these
       # for consistency in logging and any potential future use.
       DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}        # e.g., transaction pooler URL
-      DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}            # e.g., direct connection for migrations
+      DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
 
     steps:
       - name: Check out repository
@@ -58,6 +58,9 @@ jobs:
       - name: Build Next.js App
         run: yarn build
         env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DIRECT_URL: ${{ env.DIRECT_URL }}
 
