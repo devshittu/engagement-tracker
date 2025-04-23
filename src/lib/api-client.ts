@@ -2,6 +2,7 @@
 
 import Axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { supabase } from '@/lib/supabase';
+import { logger } from './logger';
 
 const apiUrl =
   typeof window === 'undefined'
@@ -16,21 +17,44 @@ export const apiClient = Axios.create({
   withCredentials: true, // Ensure cookies are sent
 });
 
+// apiClient.interceptors.request.use(
+//   async (config: InternalAxiosRequestConfig) => {
+//     if (typeof window !== 'undefined') {
+//       const {
+//         data: { session },
+//         error,
+//       } = await supabase.auth.getSession();
+//       if (error) {
+//         console.error('Failed to get session:', error.message);
+//       } else if (session?.access_token) {
+//         config.headers.set('Authorization', `Bearer ${session.access_token}`);
+//         console.log('Token added to request:', session.access_token);
+//       } else {
+//         console.warn('No session token available');
+//       }
+//     }
+//     return config;
+//   },
+//   (error) => Promise.reject(error),
+// );
+
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && supabase) {
       const {
         data: { session },
         error,
       } = await supabase.auth.getSession();
       if (error) {
-        console.error('Failed to get session:', error.message);
+        logger.error('Failed to get session:', error.message);
       } else if (session?.access_token) {
         config.headers.set('Authorization', `Bearer ${session.access_token}`);
-        console.log('Token added to request:', session.access_token);
+        logger.debug('Token added to request:', session.access_token);
       } else {
-        console.warn('No session token available');
+        logger.warn('No session token available');
       }
+    } else if (!supabase) {
+      logger.warn('Supabase client not initialized, skipping session check');
     }
     return config;
   },
