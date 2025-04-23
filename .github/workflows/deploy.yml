@@ -54,9 +54,13 @@ jobs:
         if: contains(github.event.head_commit.message, 'reset db') || contains(github.event.head_commit.message, 'db reset')
         run: yarn db:reset:prod
         env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
           DATABASE_PROVIDER: postgresql
+          ENABLE_DEBUG_LOGS: "true"
 
       # Build the Next.js application
       - name: Build Next.js App
@@ -76,8 +80,8 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          # vercel-args: '--prod --force'
-          vercel-args: '--force'
+          vercel-args: '--prod --force'
+          # vercel-args: '--force'
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DIRECT_URL: ${{ env.DIRECT_URL }}
