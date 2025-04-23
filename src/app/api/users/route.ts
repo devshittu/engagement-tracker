@@ -79,6 +79,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid user data' }, { status: 400 });
     }
 
+    if (!supabase) {
+      log('Supabase client is not initialized');
+      return NextResponse.json(
+        { error: 'Internal server error: Supabase unavailable' },
+        { status: 500 },
+      );
+    }
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
         email,

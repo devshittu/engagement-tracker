@@ -172,6 +172,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   try {
     log('Deleting user', { id });
     await prisma.user.delete({ where: { id } });
+    if (!supabase) {
+      log('Supabase client is not initialized');
+      return NextResponse.json(
+        { error: 'Internal server error: Supabase unavailable' },
+        { status: 500 },
+      );
+    }
     await supabase.auth.admin.deleteUser(id);
 
     log('User deleted successfully', { id });

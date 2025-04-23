@@ -12,6 +12,13 @@ export async function POST(req: NextRequest) {
   try {
     const token = req.cookies.get('sb-access-token')?.value;
     if (token) {
+      if (!supabase) {
+        log('Supabase client is not initialized');
+        return NextResponse.json(
+          { error: 'Internal server error: Supabase unavailable' },
+          { status: 500 },
+        );
+      }
       await supabase.auth.signOut();
     }
 

@@ -17,6 +17,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!supabase) {
+      log('Supabase client is not initialized');
+      return NextResponse.json(
+        { error: 'Internal server error: Supabase unavailable' },
+        { status: 500 },
+      );
+    }
+
     const {
       data: { user },
       error,

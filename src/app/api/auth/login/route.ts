@@ -21,6 +21,13 @@ export async function POST(req: NextRequest) {
     }
 
     log('Attempting login', { email });
+    if (!supabase) {
+      log('Supabase client is not initialized');
+      return NextResponse.json(
+        { error: 'Internal server error: Supabase unavailable' },
+        { status: 500 },
+      );
+    }
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,

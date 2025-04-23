@@ -49,6 +49,10 @@ async function main() {
 
   try {
     log('Clearing Supabase auth users...');
+    if (!supabaseAdmin) {
+      log('Supabase admin client is not initialized');
+      throw new Error('Supabase admin client is not initialized');
+    }
     const { data: users, error: listError } =
       await supabaseAdmin.auth.admin.listUsers();
     if (listError)

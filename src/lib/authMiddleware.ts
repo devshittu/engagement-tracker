@@ -34,6 +34,13 @@ export const authenticateRequest = async (
 
   log('Token received:', { token: token.slice(0, 10) + '...' });
 
+  if (!supabaseAdmin) {
+    log('Supabase admin client is not initialized');
+    return NextResponse.json(
+      { error: 'Internal server error: Supabase unavailable' },
+      { status: 500 },
+    );
+  }
   const {
     data: { user },
     error: userError,
