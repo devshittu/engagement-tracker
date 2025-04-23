@@ -17,6 +17,10 @@ jobs:
       # for consistency in logging and any potential future use.
       DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}        # e.g., transaction pooler URL
       DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ENABLE_DEBUG_LOGS: "true"
 
     steps:
       - name: Check out repository
@@ -63,6 +67,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DIRECT_URL: ${{ env.DIRECT_URL }}
+          ENABLE_DEBUG_LOGS: "true"
 
       # Deploy to Vercel
       - name: Deploy to Vercel
@@ -77,5 +82,9 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DIRECT_URL: ${{ env.DIRECT_URL }}
           DATABASE_PROVIDER: ${{ env.DATABASE_PROVIDER }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ENABLE_DEBUG_LOGS: "true"
 
 # .github/workflows/deploy.yml
