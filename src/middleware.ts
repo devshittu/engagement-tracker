@@ -120,7 +120,6 @@ export async function middleware(req: NextRequest) {
     !pathname.startsWith('/login') &&
     !pathname.startsWith('/api/auth')
   ) {
-    console.log('Middleware: No token found, redirecting to login');
     logger.warn('Middleware: No token found, redirecting to login');
     const redirectUrl = encodeURIComponent(
       pathname + req.nextUrl.search || '/dashboard',
@@ -138,7 +137,6 @@ export async function middleware(req: NextRequest) {
       error,
     } = await supabaseAdmin.auth.getUser(token);
     if (error || !user) {
-      console.log('Middleware: Invalid token', { error: error?.message });
       logger.error('Middleware: Invalid token', { error: error?.message });
       if (!isPublicRoute) {
         const redirectUrl = encodeURIComponent(
@@ -160,16 +158,9 @@ export async function middleware(req: NextRequest) {
         logger.error('Middleware: Failed to fetch profile', {
           error: profileError?.message,
         });
-        console.log('Middleware: Failed to fetch profile', {
-          error: profileError?.message,
-        });
       } else {
         userProfile = data;
         logger.info('Middleware: User authenticated', {
-          userId: user.id,
-          roles: data.roles,
-        });
-        console.log('Middleware: User authenticated', {
           userId: user.id,
           roles: data.roles,
         });
