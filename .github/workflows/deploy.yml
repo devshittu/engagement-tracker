@@ -15,12 +15,12 @@ jobs:
       DATABASE_PROVIDER: postgresql
       # Although the generated schema will have hardcoded URLs, we still pass these
       # for consistency in logging and any potential future use.
-      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}        # e.g., transaction pooler URL
+      DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }} # e.g., transaction pooler URL
       DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      ENABLE_DEBUG_LOGS: "true"
+      ENABLE_DEBUG_LOGS: 'true'
 
     steps:
       - name: Check out repository
@@ -29,7 +29,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18"  # Adjust to your required version
+          node-version: '18' # Adjust to your required version
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile --legacy-peer-deps
@@ -48,30 +48,29 @@ jobs:
       - name: Deploy Prisma Migrations
         run: yarn prisma migrate deploy --schema=prisma/schema.prisma
 
-      
       # Conditionally reset the production database if commit message contains "reset db" or "db reset"
       - name: Conditionally Reset Production Database
         if: contains(github.event.head_commit.message, 'reset db') || contains(github.event.head_commit.message, 'db reset')
         run: yarn db:reset:prod
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
           DATABASE_PROVIDER: postgresql
-          ENABLE_DEBUG_LOGS: "true"
+          ENABLE_DEBUG_LOGS: 'true'
 
       # Build the Next.js application
       - name: Build Next.js App
         run: yarn build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DIRECT_URL: ${{ env.DIRECT_URL }}
-          ENABLE_DEBUG_LOGS: "true"
+          ENABLE_DEBUG_LOGS: 'true'
 
       # Deploy to Vercel
       - name: Deploy to Vercel
@@ -87,8 +86,7 @@ jobs:
           DIRECT_URL: ${{ env.DIRECT_URL }}
           DATABASE_PROVIDER: ${{ env.DATABASE_PROVIDER }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ENABLE_DEBUG_LOGS: "true"
-
+          ENABLE_DEBUG_LOGS: 'true'
 # .github/workflows/deploy.yml

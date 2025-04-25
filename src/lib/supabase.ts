@@ -4,7 +4,7 @@
 
 // // Environment variables
 // const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-// const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+// const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // // Debug environment variables
@@ -21,8 +21,8 @@
 //   throw new Error('NEXT_PUBLIC_SUPABASE_URL must be defined');
 // }
 // if (!supabaseAnonKey) {
-//   logger.error('SUPABASE_ANON_KEY must be defined');
-//   throw new Error('SUPABASE_ANON_KEY must be defined');
+//   logger.error('NEXT_PUBLIC_SUPABASE_ANON_KEY must be defined');
+//   throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY must be defined');
 // }
 // if (!supabaseServiceKey) {
 //   logger.error('SUPABASE_SERVICE_ROLE_KEY must be defined');
@@ -57,7 +57,7 @@ logger.info('Initializing Supabase clients');
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Debug environment variables
@@ -78,7 +78,7 @@ try {
     throw new Error('NEXT_PUBLIC_SUPABASE_URL must be defined');
   }
   if (!supabaseAnonKey) {
-    throw new Error('SUPABASE_ANON_KEY must be defined');
+    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY must be defined');
   }
   if (!supabaseServiceKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY must be defined');
