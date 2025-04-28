@@ -194,6 +194,24 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
     sessionCount: sessions.length,
   });
 
+  // Format session start time
+  const sessionStartTime = sessions[0]?.createdAt
+    ? new Date(sessions[0].createdAt).toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Unknown';
+
+  // Get activity name or fallback to groupDescription
+  const sessionName =
+    sessions[0]?.activityLog?.activity?.name ||
+    groupDescription ||
+    `Group ${groupRef}`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -259,7 +277,6 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
         </div>
       </div>
 
-      {/* Existing GroupSessionModal */}
       <GroupSessionModal
         isOpen={showAddUsersModal}
         onClose={() => {
@@ -272,9 +289,11 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
           queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
         }}
         existingSessionId={sessions[0]?.id}
+        groupRef={groupRef}
+        activityLogId={sessions[0]?.activityLogId}
+        context="group-card"
       />
 
-      {/* DeclineSessionModal with Headless UI */}
       {decliningSession && (
         <Transition appear show={isDeclineModalOpen} as={React.Fragment}>
           <Dialog
@@ -322,7 +341,6 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
         </Transition>
       )}
 
-      {/* Confirmation for Ending Individual User Session */}
       {endingUserSession && (
         <ConfirmationDialog
           isOpen={isEndUserModalOpen}
@@ -331,7 +349,7 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
             endUserSessionMutation.mutate(endingUserSession.admissionId)
           }
           title="End User Session"
-          message={`Are you sure you want to end the session for ${endingUserSession.serviceUserName} in group ${groupRef}? This action cannot be undone.`}
+          message={`Are you sure you want to end the session for ${endingUserSession.serviceUserName} in group ${sessionName}? This action cannot be undone.`}
           isPending={endUserSessionMutation.isPending}
           icon={
             <svg
@@ -351,13 +369,12 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
         />
       )}
 
-      {/* Confirmation for Ending Group Session */}
       <ConfirmationDialog
         isOpen={isEndGroupModalOpen}
         onClose={() => setIsEndGroupModalOpen(false)}
         onConfirm={() => endGroupSessionMutation.mutate()}
         title="End Group Session"
-        message={`Are you sure you want to end the group session ${groupRef} with ${sessions.length} participants? This action cannot be undone.`}
+        message={`Are you sure you want to end the "${sessionName}" session with ${sessions.length} participants? Started at ${sessionStartTime}. This action cannot be undone.`}
         isPending={endGroupSessionMutation.isPending}
         icon={
           <svg
@@ -380,4 +397,5 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 };
 
 export default GroupSessionCard;
+
 // src/features/Sessions/ui/GroupSessionCard.tsx
