@@ -15,6 +15,13 @@ import { apiClient } from '@/lib/api-client';
 import { useActiveAdmissions } from '@/features/admissions/hooks/useActiveAdmissions';
 import { useActiveActivities } from '@/features/activities/hooks/useActiveActivities';
 import { useDeclineSession } from '@/features/Sessions/hooks/useDeclineSession';
+import {
+  HiUsers,
+  HiPlus,
+  HiXCircle,
+  HiXMark,
+  HiStopCircle,
+} from 'react-icons/hi2';
 
 type GroupSessionCardProps = {
   groupRef: string;
@@ -217,62 +224,81 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="card bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg"
+      className="card bg-white dark:bg-gray-900 shadow-md hover:shadow-lg transition-shadow duration-300 rounded-xl p-6 max-w-2xl mx-auto"
     >
-      <div className="card-body">
-        <h2 className="card-title text-xl text-gray-900 dark:text-gray-100">
-          {groupDescription || `Group ${groupRef}`}
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          <strong>Activity:</strong>{' '}
-          {sessions[0]?.activityLog?.activity?.name ?? 'N/A'}
-        </p>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {sessions.map((s) =>
-            s.admission?.serviceUser ? (
-              <div
-                key={s.id}
-                className="badge badge-lg bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700 rounded-full px-3 py-1 flex items-center"
-              >
-                <span>
-                  {s.admission.serviceUser.name}{' '}
-                  <span className="ml-1 text-xs">
-                    (Ward: {s.admission?.ward?.name})
-                  </span>
-                </span>
-                <button
-                  onClick={handleDeclineClick(s.id)}
-                  className="ml-2 text-yellow-500 hover:text-yellow-700"
-                  title="Decline Session"
-                >
-                  ✗
-                </button>
-                <button
-                  onClick={handleEndUserClick(
-                    s.admission.id,
-                    s.admission.serviceUser.name,
-                  )}
-                  className="ml-2 text-red-500 hover:text-red-700"
-                  title="End Session for User"
-                >
-                  ⏹
-                </button>
-              </div>
-            ) : null,
-          )}
+      <div className="space-y-4">
+        {/* Title and Activity */}
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {groupDescription || `Group ${groupRef}`}
+          </h2>
+          <p className="text-base text-gray-600 dark:text-gray-400 mt-1">
+            <span className="font-medium">Activity:</span>{' '}
+            {sessions[0]?.activityLog?.activity?.name ?? 'N/A'}
+          </p>
         </div>
-        <div className="card-actions justify-end mt-4">
+
+        {/* Participant Count and List */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <HiUsers className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {sessions.length} Participant{sessions.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sessions.map((s) =>
+              s.admission?.serviceUser ? (
+                <div
+                  key={s.id}
+                  className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-full px-3 py-1 text-sm border-none"
+                >
+                  <span>
+                    {s.admission.serviceUser.name}
+                    <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
+                      (Ward: {s.admission?.ward?.name})
+                    </span>
+                  </span>
+                  <button
+                    onClick={handleDeclineClick(s.id)}
+                    className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-300"
+                    title="Decline this user’s session"
+                  >
+                    <HiXMark className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handleEndUserClick(
+                      s.admission.id,
+                      s.admission.serviceUser.name,
+                    )}
+                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                    title="End session for this user"
+                  >
+                    <HiStopCircle className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : null,
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={() => setShowAddUsersModal(true)}
-            className="btn bg-teal-500 hover:bg-teal-600 text-white rounded-lg mr-2"
+            className="flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg px-4 py-2 transition-all duration-200"
+            title="Add more users to this group session"
           >
-            Add More Users
+            <HiPlus className="w-5 h-5" />
+            Add Users
           </button>
           <button
             onClick={handleEndGroupClick}
-            className="btn bg-red-500 hover:bg-red-600 text-white rounded-lg"
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg px-4 py-2 transition-all duration-200"
+            title="End this group session"
           >
-            End Group Session
+            <HiXCircle className="w-5 h-5" />
+            End Session
           </button>
         </div>
       </div>
@@ -397,5 +423,4 @@ const GroupSessionCard: React.FC<GroupSessionCardProps> = ({
 };
 
 export default GroupSessionCard;
-
 // src/features/Sessions/ui/GroupSessionCard.tsx
