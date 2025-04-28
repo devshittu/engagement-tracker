@@ -249,6 +249,7 @@ const SearchServiceUsers: React.FC = () => {
           setShowGroupModal(false);
           queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
         }}
+        context="search"
       />
     </div>
   );
