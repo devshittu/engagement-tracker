@@ -4,10 +4,19 @@ import Axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { supabase } from '@/lib/supabase';
 import { logger } from './logger';
 
-const apiUrl =
-  typeof window === 'undefined'
-    ? process.env.NEXT_SERVER_API_URL || 'http://localhost:3000'
-    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// Determine the API URL dynamically
+const getApiUrl = (): string => {
+  // Server-side: Use NEXT_SERVER_API_URL if defined, otherwise default to localhost
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_SERVER_API_URL || 'http://localhost:3000';
+  }
+
+  // Client-side: Use the current host (dynamic) or NEXT_PUBLIC_API_URL
+  const currentHost = window.location.origin;
+  return process.env.NEXT_PUBLIC_API_URL || currentHost;
+};
+
+const apiUrl = getApiUrl();
 
 if (!apiUrl) throw new Error('API URL is not defined');
 
