@@ -2,7 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 
-type AuthUser = {
+export type AuthUser = {
   id: string;
   name: string | null;
   email: string;
