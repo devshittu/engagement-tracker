@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Modal from '@/components/Modal/Modal';
+import { Dialog, Transition } from '@headlessui/react';
 import { motion } from 'framer-motion';
 import { apiClient } from '@/lib/api-client';
 import { toast } from 'react-toastify';
@@ -27,6 +27,9 @@ type GroupSessionModalProps = {
   onClose: () => void;
   onSessionCreated: () => void;
   existingSessionId?: number;
+  groupRef?: string;
+  activityLogId?: number;
+  context?: 'search' | 'group-card';
 };
 
 const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
@@ -34,15 +37,17 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   onClose,
   onSessionCreated,
   existingSessionId,
+  groupRef,
+  activityLogId,
+  context = 'search',
 }) => {
   const { data: activities = [], isLoading: isActivitiesLoading } =
     useActiveActivities();
   const { data: admissions = [], isLoading: isAdmissionsLoading } =
     useActiveAdmissions();
-
   const [selectedActivityLogId, setSelectedActivityLogId] = useState<
     number | ''
-  >(existingSessionId && activities.length > 0 ? activities[0].id : '');
+  >(context === 'group-card' && activityLogId ? activityLogId : '');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedUsers, setSelectedUsers] = useState<ServiceUserOption[]>([]);
   const [userOptions, setUserOptions] = useState<ServiceUserOption[]>([]);
@@ -89,8 +94,11 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   }, [debouncedSearchQuery, selectedUsers]);
 
   const checkExistingSession = useCallback(async () => {
-    if (existingSessionId) {
-      logger.debug('Checking existing session by ID', { existingSessionId });
+    if (existingSessionId && groupRef) {
+      logger.debug('Checking existing session by ID', {
+        existingSessionId,
+        groupRef,
+      });
       try {
         const response = await apiClient.get(
           `/api/sessions/${existingSessionId}`,
@@ -103,7 +111,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         logger.error('Failed to fetch existing session', { error });
         toast.error('Failed to check existing session. Please try again.');
       }
-    } else if (selectedActivityLogId) {
+    } else if (selectedActivityLogId && !existingSessionId) {
       logger.debug('Checking for active sessions by activityLogId', {
         selectedActivityLogId,
       });
@@ -126,13 +134,13 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         toast.error('Failed to check for active sessions. Please try again.');
       }
     }
-  }, [selectedActivityLogId, existingSessionId]);
+  }, [selectedActivityLogId, existingSessionId, groupRef]);
 
   useEffect(() => {
     if (selectedActivityLogId || existingSessionId) {
       checkExistingSession();
     }
-  }, [checkExistingSession, existingSessionId, selectedActivityLogId]);
+  }, [checkExistingSession]);
 
   const handleAddUser = (user: ServiceUserOption) => {
     logger.debug('Adding user to selection', {
@@ -189,7 +197,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           groupRef: existingSession.groupRef,
         });
         const confirmAdd = window.confirm(
-          `An active group session for "${activities.find((a) => a.id === selectedActivityLogId)?.name}" is ongoing. Do you want to add these users to it?`,
+          `An active group session for "${
+            activities.find((a) => a.id === selectedActivityLogId)?.name
+          }" is ongoing. Do you want to add these users to it?`,
         );
         if (confirmAdd) {
           await Promise.all(
@@ -210,18 +220,16 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           logger.info('User canceled adding to existing session');
           return;
         }
-      } else if (existingSessionId) {
+      } else if (existingSessionId && groupRef) {
         logger.debug('Adding users to specified existing session', {
           existingSessionId,
+          groupRef,
         });
         await Promise.all(
           admissionIds.map((admissionId) =>
-            apiClient.post(
-              `/api/sessions/group/${existingSession.groupRef}/join`,
-              {
-                admissionId,
-              },
-            ),
+            apiClient.post(`/api/sessions/group/${groupRef}/join`, {
+              admissionId,
+            }),
           ),
         );
         logger.info('Users added to group session', { admissionIds });
@@ -260,150 +268,180 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   }
 
   return (
-    <Modal show={isOpen} handleClose={onClose} ariaLabel="Create Group Session">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.3 }}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
-      >
-        <div className="flex justify-between items-center bg-green-500 text-white p-4 rounded-t-xl">
-          <h3 className="text-xl font-bold">
-            {existingSessionId
-              ? 'Add Users to Group Session'
-              : 'Start a Group Session'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center bg-green-600 hover:bg-green-700 text-white rounded-full transition-all duration-300 focus:outline-none"
-            aria-label="Close modal"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6">
-          <div className="space-y-6">
-            <div className="form-control">
-              <label className="label" htmlFor="activityLogId">
-                <span className="label-text font-medium text-gray-900 dark:text-gray-100">
-                  Select Activity
-                </span>
-              </label>
-              <select
-                id="activityLogId"
-                value={selectedActivityLogId}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  setSelectedActivityLogId(value);
-                  logger.debug('Activity selected', { activityLogId: value });
-                }}
-                className="select select-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-500 transition-all duration-300"
-                disabled={!!existingSessionId}
-              >
-                <option value="">Choose an Activity</option>
-                {activities.map((activity) => (
-                  <option key={activity.id} value={activity.id}>
-                    {activity.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-control">
-              <label className="label" htmlFor="userSearch">
-                <span className="label-text font-medium text-gray-900 dark:text-gray-100">
-                  Add Service Users
-                </span>
-              </label>
-              <input
-                id="userSearch"
-                type="text"
-                placeholder="Type to search admitted users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input input-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-green-500 transition-all duration-300"
-              />
+    <Transition appear show={isOpen} as={React.Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        <Transition.Child
+          as={React.Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black bg-opacity-25" />
+        </Transition.Child>
 
-              {userOptions.length > 0 && (
-                <ul className="mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md max-h-40 overflow-y-auto">
-                  {userOptions.map((user) => (
-                    <li key={user.id}>
-                      <button
-                        onClick={() => handleAddUser(user)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleAddUser(user);
-                          }
-                        }}
-                        tabIndex={0}
-                        className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center w-full text-left"
-                      >
-                        <span className="font-medium">{user.name}</span>
-                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
-                          (Ward: {user.ward}, NHS: {user.nhsNumber})
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="form-control">
-              <div className="label">
-                <span className="label-text font-medium text-gray-900 dark:text-gray-100">
-                  Selected Users
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="badge badge-lg bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-700 rounded-full px-3 py-1 flex items-center"
-                  >
-                    {user.name}
-                    <button
-                      onClick={() => handleRemoveUser(user.id)}
-                      className="ml-2 text-red-500 hover:text-red-700"
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <Transition.Child
+              as={React.Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <Dialog.Panel className="w-full max-w-lg min-w-[400px] bg-white dark:bg-gray-800 rounded-xl shadow-xl transform transition-all">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-4 rounded-t-xl">
+                    <Dialog.Title
+                      as="h3"
+                      className="text-xl font-semibold text-gray-900 dark:text-gray-100"
                     >
-                      ×
+                      {existingSessionId
+                        ? 'Add Users to Group Session'
+                        : 'Start a Group Session'}
+                    </Dialog.Title>
+                    <button
+                      onClick={onClose}
+                      className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                      aria-label="Close modal"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
                     </button>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="form-control">
-              <button
-                onClick={startSession}
-                className={`btn w-full bg-green-500 hover:bg-green-600 text-white rounded-lg transform hover:scale-105 transition-all duration-300 ${loading ? 'btn-disabled' : ''}`}
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="loading loading-spinner"></span>
-                ) : existingSessionId ? (
-                  'Add Users'
-                ) : (
-                  'Start Group Session'
-                )}
-              </button>
-            </div>
+                  <div className="p-6 space-y-6">
+                    <div className="form-control">
+                      <label className="label" htmlFor="activityLogId">
+                        <span className="label-text font-medium text-gray-900 dark:text-gray-100">
+                          Select Activity
+                        </span>
+                      </label>
+                      <select
+                        id="activityLogId"
+                        value={selectedActivityLogId}
+                        onChange={(e) => {
+                          const value = Number(e.target.value);
+                          setSelectedActivityLogId(value);
+                          logger.debug('Activity selected', {
+                            activityLogId: value,
+                          });
+                        }}
+                        className="select select-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 transition-all duration-300 disabled:opacity-50"
+                        disabled={context === 'group-card' && !!activityLogId}
+                      >
+                        <option value="">Choose an Activity</option>
+                        {activities.map((activity) => (
+                          <option key={activity.id} value={activity.id}>
+                            {activity.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-control">
+                      <label className="label" htmlFor="userSearch">
+                        <span className="label-text font-medium text-gray-900 dark:text-gray-100">
+                          Add Service Users
+                        </span>
+                      </label>
+                      <input
+                        id="userSearch"
+                        type="text"
+                        placeholder="Type to search admitted users..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="input input-bordered w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-teal-500 transition-all duration-300"
+                      />
+                      {userOptions.length > 0 && (
+                        <ul className="mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md max-h-40 overflow-y-auto">
+                          {userOptions.map((user) => (
+                            <li key={user.id}>
+                              <button
+                                onClick={() => handleAddUser(user)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    handleAddUser(user);
+                                  }
+                                }}
+                                tabIndex={0}
+                                className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 flex items-center w-full text-left"
+                              >
+                                <span className="font-medium">{user.name}</span>
+                                <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                                  (Ward: {user.ward}, NHS: {user.nhsNumber})
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="form-control">
+                      <div className="label">
+                        <span className="label-text font-medium text-gray-900 dark:text-gray-100">
+                          Selected Users
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedUsers.map((user) => (
+                          <div
+                            key={user.id}
+                            className="badge badge-lg bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 border border-teal-300 dark:border-teal-700 rounded-full px-3 py-1 flex items-center"
+                          >
+                            {user.name}
+                            <button
+                              onClick={() => handleRemoveUser(user.id)}
+                              className="ml-2 text-red-500 hover:text-red-700"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="form-control">
+                      <button
+                        onClick={startSession}
+                        className={`btn w-full bg-teal-500 hover:bg-teal-600 text-white rounded-lg transform hover:scale-105 transition-all duration-300 ${loading ? 'btn-disabled' : ''}`}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <span className="loading loading-spinner"></span>
+                        ) : existingSessionId ? (
+                          'Add Users'
+                        ) : (
+                          'Start Group Session'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </Dialog.Panel>
+            </Transition.Child>
           </div>
         </div>
-      </motion.div>
-    </Modal>
+      </Dialog>
+    </Transition>
   );
 };
 
