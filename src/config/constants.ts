@@ -13,7 +13,8 @@ export const COOKIES_PREFIX =
   (process.env.NODE_ENV === `development` ? `__Dev-` : ``) +
   `${NEXT_PUBLIC_APP_CODE_NAME}`;
 
-export const IS_DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG === 'true';
+export const IS_DEBUG_MODE =
+  process.env.NEXT_PUBLIC_ENABLE_DEBUG_LOGS === 'true';
 export const IS_BROWSER = typeof window !== 'undefined';
 export const IS_SERVER = typeof window === 'undefined';
 
