@@ -20,7 +20,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      ENABLE_DEBUG_LOGS: 'true'
+      NEXT_PUBLIC_ENABLE_DEBUG_LOGS: 'true'
 
     steps:
       - name: Check out repository
@@ -59,7 +59,7 @@ jobs:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
           DATABASE_PROVIDER: postgresql
-          ENABLE_DEBUG_LOGS: 'true'
+          NEXT_PUBLIC_ENABLE_DEBUG_LOGS: 'true'
 
       # Build the Next.js application
       - name: Build Next.js App
@@ -70,7 +70,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DIRECT_URL: ${{ env.DIRECT_URL }}
-          ENABLE_DEBUG_LOGS: 'true'
+          NEXT_PUBLIC_ENABLE_DEBUG_LOGS: 'true'
 
       # Deploy to Vercel
       - name: Deploy to Vercel
@@ -88,5 +88,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          ENABLE_DEBUG_LOGS: 'true'
+          NEXT_PUBLIC_ENABLE_DEBUG_LOGS: 'true'
 # .github/workflows/deploy.yml
