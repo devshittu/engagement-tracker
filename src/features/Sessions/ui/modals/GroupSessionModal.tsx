@@ -140,7 +140,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
     if (selectedActivityLogId || existingSessionId) {
       checkExistingSession();
     }
-  }, [checkExistingSession]);
+  }, [checkExistingSession, existingSessionId, selectedActivityLogId]);
 
   const handleAddUser = (user: ServiceUserOption) => {
     logger.debug('Adding user to selection', {
