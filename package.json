@@ -71,6 +71,7 @@
     "@types/react-transition-group": "^4.4.12",
     "@types/uuid": "^10.0.0",
     "daisyui": "^4.12.14",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
     "eslint-config-prettier": "^9.1.0",

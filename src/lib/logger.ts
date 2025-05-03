@@ -1,4 +1,4 @@
-import { IS_DEBUG_MODE } from '@/config/constants';
+import { IS_DEBUG_MODE } from '../config/constants';
 
 // src/lib/logger.ts
 const isDev = process.env.NODE_ENV !== 'production';
