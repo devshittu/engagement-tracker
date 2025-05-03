@@ -17,7 +17,7 @@ export default function CreateAdmissionForm() {
 
   useEffect(() => {
     async function fetchData() {
-      const resUsers = await fetch('/api/serviceUsers');
+      const resUsers = await fetch('/api/service-users');
       const users = await resUsers.json();
       setServiceUsers(users);
 
