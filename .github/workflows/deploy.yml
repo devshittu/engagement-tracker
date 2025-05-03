@@ -138,17 +138,17 @@ jobs:
       - name: Generate Prisma Client
         run: yarn prisma generate --schema=prisma/schema.prisma
 
-      - name: Reset Staging Database
-        if: github.ref_name == 'staging'
-        run: yarn db:reset:prod
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-          DATABASE_PROVIDER: postgresql
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_ENABLE_DEBUG_LOGS: 'true'
+      # - name: Reset Staging Database
+      #   if: github.ref_name == 'staging'
+      #   run: yarn db:reset:prod
+      #   env:
+      #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      #     DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      #     DATABASE_PROVIDER: postgresql
+      #     NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      #     NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      #     SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      #     NEXT_PUBLIC_ENABLE_DEBUG_LOGS: 'true'
 
       # Apply migrations to update the production database
       - name: Deploy Prisma Migrations
