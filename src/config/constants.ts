@@ -1,4 +1,3 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL as string;
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL as string;
 
 export const API_MOCKING = process.env.NEXT_PUBLIC_API_MOCKING === 'true';
@@ -56,3 +55,4 @@ export const privateRoutes: string[] = [
   '/notifications',
   '/topics',
 ];
+// src/config/constants.ts
