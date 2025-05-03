@@ -4,16 +4,33 @@ import Axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { supabase } from '@/lib/supabase';
 import { logger } from './logger';
 
+// // Determine the API URL dynamically
+// const getApiUrl = (): string => {
+//   // Server-side: Use NEXT_SERVER_API_URL if defined, otherwise default to localhost
+//   if (typeof window === 'undefined') {
+//     return process.env.NEXT_SERVER_API_URL || 'http://localhost:3000';
+//   }
+
+//   // Client-side: Use the current host (dynamic) or NEXT_PUBLIC_API_URL
+//   const currentHost = window.location.origin;
+//   return process.env.NEXT_PUBLIC_API_URL || currentHost;
+// };
+
 // Determine the API URL dynamically
 const getApiUrl = (): string => {
-  // Server-side: Use NEXT_SERVER_API_URL if defined, otherwise default to localhost
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_SERVER_API_URL || 'http://localhost:3000';
+  // Client-side: Use the current host
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
   }
 
-  // Client-side: Use the current host (dynamic) or NEXT_PUBLIC_API_URL
-  const currentHost = window.location.origin;
-  return process.env.NEXT_PUBLIC_API_URL || currentHost;
+  // Server-side: Use Vercel's VERCEL_URL or fallback to localhost
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}`;
+  }
+
+  // Local development fallback
+  return process.env.NEXT_SERVER_API_URL || 'http://localhost:3000';
 };
 
 const apiUrl = getApiUrl();
