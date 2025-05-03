@@ -34,7 +34,7 @@ const NewServiceUserForm: React.FC = () => {
       return;
     }
 
-    const res = await fetch('/api/serviceUsers', {
+    const res = await fetch('/api/service-users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, wardId, status }),
