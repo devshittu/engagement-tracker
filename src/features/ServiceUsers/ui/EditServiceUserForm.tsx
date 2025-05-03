@@ -40,7 +40,7 @@ const EditServiceUserForm: React.FC<Props> = ({ serviceUser }) => {
       return;
     }
 
-    const res = await fetch(`/api/serviceUsers/${serviceUser.id}`, {
+    const res = await fetch(`/api/service-users/${serviceUser.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, wardId }),
