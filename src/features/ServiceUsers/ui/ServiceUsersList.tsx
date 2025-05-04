@@ -3,17 +3,31 @@
 //       Re-enable type checking after resolving the issues.
 
 // src/features/ServiceUsers/ui/ServiceUsersList.tsx
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useServiceUsers } from '@/hooks/useServiceUsers';
 import { InView } from 'react-intersection-observer';
 import { FiEdit } from 'react-icons/fi';
-import { ServiceUsersResponse, ServiceUserStatus } from '@/types/serviceUser';
+import { apiClient } from '@/lib/api-client';
+import { CreateAdmissionModal } from './CreateAdmissionModal';
+import { DischargeConfirmationModal } from './DischargeConfirmationModal';
+import { EditServiceUserModal } from './EditServiceUserModal';
+import { useModalStore } from '@/stores/modalStore';
+
+type Ward = { id: number; name: string };
+type ServiceUsersResponse = {
+  serviceUsers: any;
+  total: number;
+  page: number;
+  pageSize: number;
+};
+type ServiceUserStatus = 'all' | 'admitted' | 'discharged';
 
 type ServiceUsersListProps = {
-  showReportLinks?: boolean; // Toggle for reporting context
+  showReportLinks?: boolean;
 };
 
 const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
@@ -23,14 +37,29 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
   const [sortBy, setSortBy] = useState<string>('name');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [groupByWard, setGroupByWard] = useState<boolean>(false);
+  const [wards, setWards] = useState<Ward[]>([]);
+  const { setCreateAdmissionModal, setDischargeModal, setEditModal } =
+    useModalStore();
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
     useServiceUsers({
       statusFilter,
       sortBy,
       order,
       groupByWard,
     });
+
+  useEffect(() => {
+    const fetchWards = async () => {
+      try {
+        const data = await apiClient.get<Ward[]>('/api/wards');
+        setWards(data);
+      } catch {
+        console.error('Failed to fetch wards.');
+      }
+    };
+    fetchWards();
+  }, []);
 
   const handleStatusFilterChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
@@ -117,6 +146,12 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
             className="checkbox checkbox-primary"
           />
         </div>
+        <button
+          onClick={() => setCreateAdmissionModal(true)}
+          className="btn bg-teal-500 hover:bg-teal-600 text-white rounded-lg"
+        >
+          Create Admission
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -124,7 +159,7 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
           ? data?.pages.map((page: ServiceUsersResponse, pageIndex: number) => (
               <React.Fragment key={pageIndex}>
                 {Array.isArray(page.serviceUsers) &&
-                  page.serviceUsers.map((user) => {
+                  page.serviceUsers.map((user: any) => {
                     const latestAdmission = getLatestAdmission(user.admissions);
                     const wardName = latestAdmission?.ward?.name || 'No Ward';
                     const isAdmitted =
@@ -147,13 +182,25 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
                           <p className="text-sm text-gray-600">
                             <strong>Ward:</strong> {wardName}
                           </p>
-                          <div className="card-actions justify-end mt-4">
-                            {!showReportLinks && (
-                              <Link href={`/serviceUsers/${user.id}/edit`}>
-                                <button className="btn btn-sm btn-info flex items-center gap-1">
-                                  <FiEdit /> Edit
-                                </button>
-                              </Link>
+                          <div className="card-actions justify-end mt-4 space-x-2">
+                            <button
+                              onClick={() => setEditModal(true, user)}
+                              className="btn btn-sm btn-info flex items-center gap-1"
+                            >
+                              <FiEdit /> Edit
+                            </button>
+                            {isAdmitted && (
+                              <button
+                                onClick={() =>
+                                  setDischargeModal(true, {
+                                    ...user,
+                                    admissions: [latestAdmission],
+                                  })
+                                }
+                                className="btn btn-sm btn-error"
+                              >
+                                Discharge
+                              </button>
                             )}
                             {showReportLinks && (
                               <>
@@ -189,7 +236,7 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
                         {wardName}
                       </h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {users.map((user) => {
+                        {users.map((user: any) => {
                           const latestAdmission = getLatestAdmission(
                             user.admissions,
                           );
@@ -209,15 +256,25 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
                                     {isAdmitted ? 'Admitted' : 'Discharged'}
                                   </span>
                                 </h3>
-                                <div className="card-actions justify-end mt-4">
-                                  {!showReportLinks && (
-                                    <Link
-                                      href={`/serviceUsers/${user.id}/edit`}
+                                <div className="card-actions justify-end mt-4 space-x-2">
+                                  <button
+                                    onClick={() => setEditModal(true, user)}
+                                    className="btn btn-sm btn-info flex items-center gap-1"
+                                  >
+                                    <FiEdit /> Edit
+                                  </button>
+                                  {isAdmitted && (
+                                    <button
+                                      onClick={() =>
+                                        setDischargeModal(true, {
+                                          ...user,
+                                          admissions: [latestAdmission],
+                                        })
+                                      }
+                                      className="btn btn-sm btn-error"
                                     >
-                                      <button className="btn btn-sm btn-info flex items-center gap-1">
-                                        <FiEdit /> Edit
-                                      </button>
-                                    </Link>
+                                      Discharge
+                                    </button>
                                   )}
                                   {showReportLinks && (
                                     <>
@@ -272,6 +329,10 @@ const ServiceUsersList: React.FC<ServiceUsersListProps> = ({
           <p className="text-gray-500">No more service users to load.</p>
         )}
       </div>
+
+      <CreateAdmissionModal onAdmissionCreated={refetch} />
+      <DischargeConfirmationModal onDischarge={refetch} />
+      <EditServiceUserModal onEdit={refetch} wards={wards} />
     </div>
   );
 };
