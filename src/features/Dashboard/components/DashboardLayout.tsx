@@ -2,6 +2,7 @@
 // TODO: Temporary suppression of TypeScript errors for demo purposes.
 //       Re-enable type checking after resolving the issues.
 // src/features/Dashboard/components/DashboardLayout.tsx
+
 'use client';
 import { useState } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
@@ -9,8 +10,6 @@ import { UserInfo } from './UserInfo';
 import { EntityList } from './EntityList';
 import { CRUDModal } from './CRUDModal';
 import { DashboardEntity } from '../types';
-import ActiveSessionsDashboard from '@/features/Sessions/ui/dashboard/ActiveSessionsDashboard';
-import SearchServiceUsers from '@/features/ServiceUsers/ui/SearchServiceUsers';
 import { Button } from '@/components/Buttons/Button';
 import { toast } from 'react-toastify';
 import { logger } from '@/lib/logger';
@@ -333,15 +332,17 @@ export const DashboardLayout: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="animate-pulse">Loading Dashboard...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="loading loading-spinner loading-lg text-teal-500" />
+      </div>
+    );
   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
       <UserInfo user={user} isLoggingOut={false} logout={logout} />
-      {/* <ActiveSessionsDashboard />
-      <SearchServiceUsers /> */}
       {isAdmin && (
         <div className="space-y-6">
           <section className="card bg-base-100 shadow-xl p-6">
@@ -429,6 +430,7 @@ export const DashboardLayout: React.FC = () => {
               onEdit={(entity) => handleOpenModal('Ward', 'update', entity)}
               onDelete={(entity) => handleOpenModal('Ward', 'delete', entity)}
               isLoading={isLoading}
+              isEmpty={wards.length === 0 && !isLoading}
             />
           </section>
         </div>
