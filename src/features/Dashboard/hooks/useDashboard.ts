@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useDepartments } from './useDepartments';
 import { useRoles } from './useRoles';
 import { useUsers } from './useUsers';
-import { useWards } from './useWards';
+import { useWards } from '@/features/Wards/hooks/useWards';
 
 export const useDashboard = () => {
   const { user, isLoading: isAuthLoading, logout } = useAuth();
