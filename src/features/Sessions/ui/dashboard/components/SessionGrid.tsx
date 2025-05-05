@@ -7,7 +7,7 @@
 import React from 'react';
 import { ActiveSessionsResponse } from '@/features/Sessions/hooks/useActiveSessions';
 import GroupSessionCard from '@/features/Sessions/ui/cards/GroupSessionCard';
-import OneToOneSessionCard from './OneToOneSessionCard';
+import OneToOneSessionCard from '../../cards/OneToOneSessionCard';
 import { logger } from '@/lib/logger';
 
 type SessionGridProps = {
