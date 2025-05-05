@@ -4,18 +4,6 @@ import Axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { supabase } from '@/lib/supabase';
 import { logger } from './logger';
 
-// // Determine the API URL dynamically
-// const getApiUrl = (): string => {
-//   // Server-side: Use NEXT_SERVER_API_URL if defined, otherwise default to localhost
-//   if (typeof window === 'undefined') {
-//     return process.env.NEXT_SERVER_API_URL || 'http://localhost:3000';
-//   }
-
-//   // Client-side: Use the current host (dynamic) or NEXT_PUBLIC_API_URL
-//   const currentHost = window.location.origin;
-//   return process.env.NEXT_PUBLIC_API_URL || currentHost;
-// };
-
 // Determine the API URL dynamically
 const getApiUrl = (): string => {
   // Client-side: Use the current host
@@ -42,27 +30,6 @@ export const apiClient = Axios.create({
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // Ensure cookies are sent
 });
-
-// apiClient.interceptors.request.use(
-//   async (config: InternalAxiosRequestConfig) => {
-//     if (typeof window !== 'undefined') {
-//       const {
-//         data: { session },
-//         error,
-//       } = await supabase.auth.getSession();
-//       if (error) {
-//         console.error('Failed to get session:', error.message);
-//       } else if (session?.access_token) {
-//         config.headers.set('Authorization', `Bearer ${session.access_token}`);
-//         console.log('Token added to request:', session.access_token);
-//       } else {
-//         console.warn('No session token available');
-//       }
-//     }
-//     return config;
-//   },
-//   (error) => Promise.reject(error),
-// );
 
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
