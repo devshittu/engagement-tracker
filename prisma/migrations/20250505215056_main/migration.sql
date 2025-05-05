@@ -2,7 +2,7 @@
 CREATE TYPE "SessionType" AS ENUM ('GROUP', 'ONE_TO_ONE');
 
 -- CreateEnum
-CREATE TYPE "SessionStatus" AS ENUM ('SCHEDULED', 'COMPLETED', 'CANCELLED', 'DECLINED');
+CREATE TYPE "SessionStatus" AS ENUM ('SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED', 'DECLINED');
 
 -- CreateTable
 CREATE TABLE "decline_reasons" (
