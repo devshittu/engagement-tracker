@@ -1,3 +1,4 @@
+// src/features/Sessions/ui/dashboard/components/OneToOneSessionCard.tsx
 'use client';
 
 import React from 'react';
@@ -59,3 +60,4 @@ const OneToOneSessionCard: React.FC<OneToOneSessionCardProps> = ({
 );
 
 export default OneToOneSessionCard;
+// src/features/Sessions/ui/dashboard/components/OneToOneSessionCard.tsx

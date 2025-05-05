@@ -1,3 +1,4 @@
+// src/components/Frame/DashboardPageFrame.tsx
 'use client';
 
 import React, { FC, useRef, useEffect } from 'react';
@@ -72,3 +73,4 @@ const DashboardPageFrame: FC<DashboardPageFrameProps> = (props) => {
 };
 
 export default DashboardPageFrame;
+// src/components/Frame/DashboardPageFrame.tsx
