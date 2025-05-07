@@ -11,13 +11,23 @@ export async function POST(req: NextRequest) {
 
   const { userId } = authResult;
   const body = await req.json();
-  const { type, admissionIds, activityLogId, timeIn, timeOut, groupRef, groupDescription } = body;
+  const {
+    type,
+    admissionIds,
+    activityLogId,
+    timeIn,
+    timeOut,
+    groupRef,
+    groupDescription,
+  } = body;
 
   // Validate input
   if (
     !type ||
     !timeIn ||
-    !(type === 'ONE_TO_ONE' ? admissionIds?.length === 1 : admissionIds?.length > 0) ||
+    !(type === 'ONE_TO_ONE'
+      ? admissionIds?.length === 1
+      : admissionIds?.length > 0) ||
     (type === 'ONE_TO_ONE' && !activityLogId) ||
     (type === 'GROUP' && !groupRef)
   ) {
@@ -34,19 +44,38 @@ export async function POST(req: NextRequest) {
     // Check for overlapping sessions
     const overlapCheck = await prisma.session.findFirst({
       where: {
-        admissionId: type === 'ONE_TO_ONE' ? admissionIds[0] : { in: admissionIds },
+        admissionId:
+          type === 'ONE_TO_ONE' ? admissionIds[0] : { in: admissionIds },
         status: { not: SessionStatus.COMPLETED },
         OR: [
-          { timeIn: { lte: new Date(timeIn), gte: new Date(timeOut || timeIn) } },
-          { timeOut: { not: null, gte: new Date(timeIn), lte: new Date(timeOut || timeIn) } },
-          { timeIn: { lte: new Date(timeIn) }, timeOut: { gte: new Date(timeOut || timeIn) } },
+          {
+            timeIn: { lte: new Date(timeIn), gte: new Date(timeOut || timeIn) },
+          },
+          {
+            timeOut: {
+              not: null,
+              gte: new Date(timeIn),
+              lte: new Date(timeOut || timeIn),
+            },
+          },
+          {
+            timeIn: { lte: new Date(timeIn) },
+            timeOut: { gte: new Date(timeOut || timeIn) },
+          },
         ],
       },
     });
 
     if (overlapCheck) {
-      logger.warn('Overlapping session detected', { admissionId: admissionIds, timeIn, timeOut });
-      return NextResponse.json({ error: 'Session overlaps with an existing session' }, { status: 400 });
+      logger.warn('Overlapping session detected', {
+        admissionId: admissionIds,
+        timeIn,
+        timeOut,
+      });
+      return NextResponse.json(
+        { error: 'Session overlaps with an existing session' },
+        { status: 400 },
+      );
     }
 
     // Create session(s)
@@ -91,7 +120,10 @@ export async function POST(req: NextRequest) {
     logger.error('Failed to create backdated session(s)', {
       error: error instanceof Error ? error.message : String(error),
     });
-    return NextResponse.json({ error: 'Failed to create backdated session(s)' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create backdated session(s)' },
+      { status: 500 },
+    );
   }
 }
 
