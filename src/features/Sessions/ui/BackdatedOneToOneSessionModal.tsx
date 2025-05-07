@@ -194,7 +194,6 @@
 //   );
 // };
 
-
 'use client';
 
 import { Dialog, Transition } from '@headlessui/react';
@@ -224,33 +223,41 @@ export const BackdatedOneToOneSessionModal = ({
   isOpen,
   setIsOpen,
 }: BackdatedOneToOneSessionModalProps) => {
-  const { data: activities = [], isLoading: isActivitiesLoading } = useActiveActivities();
+  const { data: activities = [], isLoading: isActivitiesLoading } =
+    useActiveActivities();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-  const { data, fetchNextPage, hasNextPage, isFetching } = useSearchServiceUsers({
-    q: debouncedSearchQuery,
-    sortBy: 'name',
-    order: 'asc',
-  });
+  const { data, fetchNextPage, hasNextPage, isFetching } =
+    useSearchServiceUsers({
+      q: debouncedSearchQuery,
+      sortBy: 'name',
+      order: 'asc',
+    });
   const { mutate: createSession, isPending } = useCreateBackdatedSession();
-  const [selectedUser, setSelectedUser] = useState<ServiceUserOption | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ServiceUserOption | null>(
+    null,
+  );
   const [userOptions, setUserOptions] = useState<ServiceUserOption[]>([]);
-  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(
+    null,
+  );
   const [timeIn, setTimeIn] = useState<Date | null>(null);
   const [timeOut, setTimeOut] = useState<Date | null>(null);
 
   useEffect(() => {
     if (data) {
-      const allUsers = data.pages.flatMap(page => page.serviceUsers);
+      const allUsers = data.pages.flatMap((page) => page.serviceUsers);
       const filteredUsers = allUsers
-        .filter((user: any) => user.admissions.some((adm: any) => !adm.dischargeDate))
+        .filter((user: any) =>
+          user.admissions.some((adm: any) => !adm.dischargeDate),
+        )
         .map((user: any) => ({
           id: user.id,
           name: user.name,
           nhsNumber: user.nhsNumber,
           ward: user.admissions[0]?.ward.name || 'Unknown',
         }));
-      setUserOptions(filteredUsers.filter(u => u.id !== selectedUser?.id));
+      setUserOptions(filteredUsers.filter((u) => u.id !== selectedUser?.id));
     }
   }, [data, selectedUser]);
 
@@ -259,17 +266,20 @@ export const BackdatedOneToOneSessionModal = ({
   };
 
   const handleAddUser = (user: ServiceUserOption) => {
-    logger.debug('Adding user to selection', { userId: user.id, name: user.name });
+    logger.debug('Adding user to selection', {
+      userId: user.id,
+      name: user.name,
+    });
     setSelectedUser(user);
     setSearchQuery('');
-    setUserOptions(prev => prev.filter(u => u.id !== user.id));
+    setUserOptions((prev) => prev.filter((u) => u.id !== user.id));
   };
 
   const handleRemoveUser = () => {
     if (selectedUser) {
       logger.debug('Removing user from selection', { userId: selectedUser.id });
       setSelectedUser(null);
-      setUserOptions(prev => [...prev, selectedUser]);
+      setUserOptions((prev) => [...prev, selectedUser]);
     }
   };
 
@@ -305,7 +315,11 @@ export const BackdatedOneToOneSessionModal = ({
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={() => setIsOpen(false)}>
+      <Dialog
+        as="div"
+        className="relative z-50"
+        onClose={() => setIsOpen(false)}
+      >
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -337,7 +351,10 @@ export const BackdatedOneToOneSessionModal = ({
                   transition={{ duration: 0.3 }}
                 >
                   <div className="flex justify-between items-center p-4">
-                    <Dialog.Title as="h2" className="text-2xl font-bold text-gray-900">
+                    <Dialog.Title
+                      as="h2"
+                      className="text-2xl font-bold text-gray-900"
+                    >
                       Create Backdated One-to-One Session
                     </Dialog.Title>
                     <button
@@ -345,20 +362,35 @@ export const BackdatedOneToOneSessionModal = ({
                       className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
                       aria-label="Close modal"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
                   <div className="p-6 space-y-6">
                     <div className="form-control">
-                      <label htmlFor="activityLogId" className="label-text font-medium text-gray-900">
+                      <label
+                        htmlFor="activityLogId"
+                        className="label-text font-medium text-gray-900"
+                      >
                         Select Activity
                       </label>
                       <select
                         id="activityLogId"
                         value={selectedActivityId ?? ''}
-                        onChange={(e) => setSelectedActivityId(Number(e.target.value))}
+                        onChange={(e) =>
+                          setSelectedActivityId(Number(e.target.value))
+                        }
                         className="mt-1 block w-full rounded-md border-gray-300 focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                       >
                         <option value="">Choose an Activity</option>
@@ -370,7 +402,10 @@ export const BackdatedOneToOneSessionModal = ({
                       </select>
                     </div>
                     <div className="form-control">
-                      <label htmlFor="userSearch" className="label-text font-medium text-gray-900">
+                      <label
+                        htmlFor="userSearch"
+                        className="label-text font-medium text-gray-900"
+                      >
                         Add Service User
                       </label>
                       <input
@@ -390,7 +425,9 @@ export const BackdatedOneToOneSessionModal = ({
                                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors duration-200 flex items-center w-full text-left"
                               >
                                 <span className="font-medium">{user.name}</span>
-                                <span className="ml-2 text-sm text-gray-600">(Ward: {user.ward}, NHS: {user.nhsNumber})</span>
+                                <span className="ml-2 text-sm text-gray-600">
+                                  (Ward: {user.ward}, NHS: {user.nhsNumber})
+                                </span>
                               </button>
                             </li>
                           ))}
@@ -398,27 +435,46 @@ export const BackdatedOneToOneSessionModal = ({
                       )}
                     </div>
                     <div className="form-control">
-                      <div className="label-text font-medium text-gray-900">Selected User</div>
+                      <div className="label-text font-medium text-gray-900">
+                        Selected User
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {selectedUser && (
                           <div className="badge badge-lg bg-teal-100 text-teal-800 border border-teal-300 rounded-full px-3 py-1 flex items-center">
                             {selectedUser.name}
-                            <button onClick={handleRemoveUser} className="ml-2 text-red-500 hover:text-red-700">×</button>
+                            <button
+                              onClick={handleRemoveUser}
+                              className="ml-2 text-red-500 hover:text-red-700"
+                            >
+                              ×
+                            </button>
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="form-control">
-                      <label htmlFor="timeIn" className="label-text font-medium text-gray-900">
+                      <label
+                        htmlFor="timeIn"
+                        className="label-text font-medium text-gray-900"
+                      >
                         Start Time
                       </label>
-                      <TimePickerWidget selected={timeIn} onChange={(date) => setTimeIn(date)} />
+                      <TimePickerWidget
+                        selected={timeIn}
+                        onChange={(date) => setTimeIn(date)}
+                      />
                     </div>
                     <div className="form-control">
-                      <label htmlFor="timeOut" className="label-text font-medium text-gray-900">
+                      <label
+                        htmlFor="timeOut"
+                        className="label-text font-medium text-gray-900"
+                      >
                         End Time (Optional)
                       </label>
-                      <TimePickerWidget selected={timeOut} onChange={(date) => setTimeOut(date)} />
+                      <TimePickerWidget
+                        selected={timeOut}
+                        onChange={(date) => setTimeOut(date)}
+                      />
                     </div>
                     <div className="form-control">
                       <button
