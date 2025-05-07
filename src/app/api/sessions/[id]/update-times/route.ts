@@ -7,12 +7,12 @@ import { logger } from '@/lib/logger';
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const authResult = await authenticateRequest(req, 0, undefined, logger.debug);
   if (authResult instanceof NextResponse) return authResult;
 
-  const { id } = params;
+  const { id } = await params;
   const { timeIn, timeOut } = await req.json();
 
   if (!id || !timeIn || !timeOut) {
