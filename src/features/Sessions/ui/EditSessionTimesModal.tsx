@@ -20,7 +20,9 @@ export const EditSessionTimesModal = ({
 }: EditSessionTimesModalProps) => {
   const { mutate: updateSessionTimes, isPending } = useUpdateSessionTimes();
   const [timeIn, setTimeIn] = useState<Date | null>(new Date(session.timeIn));
-  const [timeOut, setTimeOut] = useState<Date | null>(session.timeOut ? new Date(session.timeOut) : null);
+  const [timeOut, setTimeOut] = useState<Date | null>(
+    session.timeOut ? new Date(session.timeOut) : null,
+  );
 
   const handleSubmit = () => {
     if (!timeIn || !timeOut) {
@@ -44,7 +46,11 @@ export const EditSessionTimesModal = ({
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={() => setIsOpen(false)}>
+      <Dialog
+        as="div"
+        className="relative z-50"
+        onClose={() => setIsOpen(false)}
+      >
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -76,7 +82,10 @@ export const EditSessionTimesModal = ({
                   transition={{ duration: 0.3 }}
                 >
                   <div className="flex justify-between items-center p-4">
-                    <Dialog.Title as="h2" className="text-2xl font-bold text-gray-900">
+                    <Dialog.Title
+                      as="h2"
+                      className="text-2xl font-bold text-gray-900"
+                    >
                       Edit Session Times
                     </Dialog.Title>
                     <button
@@ -84,23 +93,45 @@ export const EditSessionTimesModal = ({
                       className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
                       aria-label="Close modal"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
                   <div className="p-6 space-y-6">
                     <div className="form-control">
-                      <label htmlFor="timeIn" className="label-text font-medium text-gray-900">
+                      <label
+                        htmlFor="timeIn"
+                        className="label-text font-medium text-gray-900"
+                      >
                         Start Time
                       </label>
-                      <TimePickerWidget selected={timeIn} onChange={(date) => setTimeIn(date)} />
+                      <TimePickerWidget
+                        selected={timeIn}
+                        onChange={(date) => setTimeIn(date)}
+                      />
                     </div>
                     <div className="form-control">
-                      <label htmlFor="timeOut" className="label-text font-medium text-gray-900">
+                      <label
+                        htmlFor="timeOut"
+                        className="label-text font-medium text-gray-900"
+                      >
                         End Time
                       </label>
-                      <TimePickerWidget selected={timeOut} onChange={(date) => setTimeOut(date)} />
+                      <TimePickerWidget
+                        selected={timeOut}
+                        onChange={(date) => setTimeOut(date)}
+                      />
                     </div>
                     <div className="form-control">
                       <button
