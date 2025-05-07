@@ -14,6 +14,7 @@ type CreateBackdatedSessionVariables = {
   timeIn: string;
   timeOut?: string;
   groupRef?: string;
+  groupDescription?: string; // Added optional group description
 };
 
 export const useCreateBackdatedSession = () => {
