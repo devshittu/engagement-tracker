@@ -10,7 +10,6 @@ import { toast } from 'react-toastify';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Session, SessionType, SessionStatus } from '@prisma/client';
-// import { useSessions } from '@/features/Sessions/hooks/useSessions';
 import ElapsedTime from './ElapsedTime';
 import GroupSessionCard from './cards/GroupSessionCard';
 import { apiClient } from '@/lib/api-client';
