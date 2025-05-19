@@ -1,6 +1,5 @@
-import { IS_DEBUG_MODE } from '@/config/constants';
-
 // src/lib/logger.ts
+import { IS_DEBUG_MODE } from '../config/constants';
 const isDev = process.env.NODE_ENV !== 'production';
 
 // Determine if debug logs should be enabled

@@ -23,6 +23,7 @@ enum SessionType {
 
 enum SessionStatus {
   SCHEDULED
+  ONGOING
   COMPLETED
   CANCELLED
   DECLINED // Added new status for declined sessions

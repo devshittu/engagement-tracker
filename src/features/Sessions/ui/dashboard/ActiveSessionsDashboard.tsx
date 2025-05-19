@@ -6,7 +6,6 @@ import React, { useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
-// import { apiClient } from '@/lib/logger';
 import { logger } from '@/lib/logger';
 import {
   useActiveSessions,
@@ -19,6 +18,9 @@ import ConfirmationDialog from '@/components/ui/modals/ConfirmationDialog';
 import DeclineSessionModal from '@/features/Sessions/ui/modals/DeclineSessionModal';
 import { Dialog, Transition } from '@headlessui/react';
 import { apiClient } from '@/lib/api-client';
+// import { EditSessionTimesModal } from './EditSessionTimesModal';
+import { Session } from '@prisma/client';
+import { EditSessionTimesModal } from '../EditSessionTimesModal';
 
 const ActiveSessionsDashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
@@ -28,6 +30,7 @@ const ActiveSessionsDashboard: React.FC = () => {
   const [isDeclineModalOpen, setIsDeclineModalOpen] = React.useState(false);
   const [isEndSessionModalOpen, setIsEndSessionModalOpen] =
     React.useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [decliningSession, setDecliningSession] = React.useState<{
     id: number;
     serviceUserName: string;
@@ -37,6 +40,9 @@ const ActiveSessionsDashboard: React.FC = () => {
     id: number;
     serviceUserName: string;
   } | null>(null);
+  const [editingSession, setEditingSession] = React.useState<Session | null>(
+    null,
+  );
 
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -77,6 +83,8 @@ const ActiveSessionsDashboard: React.FC = () => {
       isEndSessionModalOpen,
       showEndAllOneToOneModal,
       showEndAllGroupModal,
+      isEditModalOpen,
+      editingSession,
     });
   }, [
     decliningSession,
@@ -85,6 +93,8 @@ const ActiveSessionsDashboard: React.FC = () => {
     isEndSessionModalOpen,
     showEndAllOneToOneModal,
     showEndAllGroupModal,
+    isEditModalOpen,
+    editingSession,
   ]);
 
   const totalActive = (oneToOneData?.total ?? 0) + (groupData?.total ?? 0);
@@ -191,6 +201,17 @@ const ActiveSessionsDashboard: React.FC = () => {
     [],
   );
 
+  const handleEditSessionClick = useCallback(
+    (session: Session) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      event.preventDefault();
+      logger.info('Edit session times clicked', { sessionId: session.id });
+      setEditingSession(session);
+      setIsEditModalOpen(true);
+    },
+    [],
+  );
+
   const handleDeclineSubmit = useCallback(
     (
       sessionId: number,
@@ -267,6 +288,7 @@ const ActiveSessionsDashboard: React.FC = () => {
         groupData={groupData}
         onDecline={handleDeclineClick}
         onEndSession={handleEndSessionClick}
+        onEditSession={handleEditSessionClick}
       />
       <ConfirmationDialog
         isOpen={showEndAllOneToOneModal}
@@ -384,6 +406,13 @@ const ActiveSessionsDashboard: React.FC = () => {
             </div>
           </Dialog>
         </Transition>
+      )}
+      {editingSession && (
+        <EditSessionTimesModal
+          isOpen={isEditModalOpen}
+          setIsOpen={setIsEditModalOpen}
+          session={editingSession}
+        />
       )}
     </div>
   );

@@ -92,7 +92,12 @@ export const authenticateRequest = async (
         : [],
     };
   } else {
-    userProfile = supabaseProfile;
+    userProfile = {
+      id: supabaseProfile.id,
+      email: supabaseProfile.email,
+      departmentId: supabaseProfile.departmentId,
+      roles: supabaseProfile.roles || [], // Ensure roles is always an array
+    };
   }
 
   const roles = userProfile.roles || [];
@@ -105,6 +110,14 @@ export const authenticateRequest = async (
   }
 
   const userRole = roles[0];
+  if (!userRole) {
+    log('User role is undefined', { userId: user.id });
+    return NextResponse.json(
+      { error: 'Forbidden: Invalid role data' },
+      { status: 403 },
+    );
+  }
+
   if (
     requiredRoleLevel > 0 &&
     userRole.level < requiredRoleLevel &&
@@ -133,8 +146,9 @@ export const authenticateRequest = async (
 
   log('User authenticated successfully', {
     userId: user.id,
-    role: userRole.name,
+    role: userRole.name || 'Unknown',
   });
   return { userProfile, userId: user.id };
 };
+
 // src/lib/authMiddleware.ts

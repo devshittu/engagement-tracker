@@ -10,11 +10,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Debug environment variables
+// Log the actual values (mask the service key for security)
 logger.debug('Supabase Environment Variables', {
-  supabaseUrl: supabaseUrl ? 'Defined' : 'Undefined',
+  supabaseUrl,
   supabaseAnonKey: supabaseAnonKey ? 'Defined' : 'Undefined',
-  supabaseServiceKey: supabaseServiceKey ? 'Defined' : 'Undefined',
+  supabaseServiceKey: supabaseServiceKey
+    ? `${supabaseServiceKey.slice(0, 5)}...${supabaseServiceKey.slice(-5)}`
+    : 'Undefined',
   isClient: typeof window !== 'undefined',
   nodeEnv: process.env.NODE_ENV,
 });

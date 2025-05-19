@@ -2,24 +2,41 @@
 // TODO: Temporary suppression of TypeScript errors for demo purposes.
 //       Re-enable type checking after resolving the issues.
 
-// src/features/Sessions/ui/InfiniteSessionsList.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { InView } from 'react-intersection-observer';
 import { toast } from 'react-toastify';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import {
-  SessionsResponse,
-  GroupedResponse,
-  GroupedSession,
-  Session,
-} from '@/types/serviceUser';
-import { useSessions } from '@/hooks/useSessions';
+import { Session, SessionType, SessionStatus } from '@prisma/client';
 import ElapsedTime from './ElapsedTime';
 import GroupSessionCard from './cards/GroupSessionCard';
+import { apiClient } from '@/lib/api-client';
+import { EditSessionTimesModal } from './EditSessionTimesModal';
+import { useSessions } from '@/hooks/useSessions';
+
+interface SessionsResponse {
+  sessions: (Session & {
+    admission: { serviceUser: { name: string } };
+    activityLog: { activity: { name: string }; id: number };
+  })[];
+  total: number;
+  nextCursor: string | null;
+}
+
+interface GroupedSession {
+  timeIn?: string;
+  admissionId?: number;
+  activityId?: number;
+  _count: { _all: number };
+}
+
+interface GroupedResponse {
+  groupedData: GroupedSession[];
+  total: number;
+  nextCursor: string | null;
+}
 
 type SessionsData = SessionsResponse | GroupedResponse;
 
@@ -30,8 +47,9 @@ const InfiniteSessionsList: React.FC = () => {
     'none' | 'timeIn' | 'activityLogId' | 'admissionId'
   >('none');
   const [showFiltersDescription, setShowFiltersDescription] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
 
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } =
@@ -43,27 +61,28 @@ const InfiniteSessionsList: React.FC = () => {
 
   const handleEndSession = async (sessionId: number) => {
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/end`, {
-        method: 'POST',
-      });
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ['sessions'] });
-        toast.success('Session ended successfully!');
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || 'Failed to end session');
-      }
-    } catch (error) {
+      await apiClient.post(`/api/sessions/${sessionId}/end`, { id: sessionId });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('Session ended successfully!');
+    } catch (error: any) {
       console.error('Error ending session:', error);
-      toast.error('An unexpected error occurred.');
+      toast.error(error.response?.data?.error || 'Failed to end session');
     }
   };
+
+  const handleEditSessionClick =
+    (session: Session) => (event: React.MouseEvent) => {
+      event.stopPropagation();
+      event.preventDefault();
+      setEditingSession(session);
+      setIsEditModalOpen(true);
+    };
 
   const renderPage = (page: SessionsData, pageIndex: number) => {
     if ('groupedData' in page) {
       return (
         <React.Fragment key={pageIndex}>
-          {page.groupedData.map((group: GroupedSession, idx) => (
+          {page.groupedData.map((group: GroupedSession, idx: number) => (
             <motion.div
               key={idx}
               initial={{ opacity: 0, y: 20 }}
@@ -108,7 +127,7 @@ const InfiniteSessionsList: React.FC = () => {
                 session: Session,
               ) => {
                 if (
-                  session.type === 'GROUP' &&
+                  session.type === SessionType.GROUP &&
                   session.groupRef &&
                   !session.timeOut
                 ) {
@@ -141,10 +160,10 @@ const InfiniteSessionsList: React.FC = () => {
             ))}
           {page.sessions
             .filter(
-              (session: Session) =>
-                session.type === 'ONE_TO_ONE' || session.timeOut,
+              (session) =>
+                session.type === SessionType.ONE_TO_ONE || session.timeOut,
             )
-            .map((session: Session) => (
+            .map((session) => (
               <motion.div
                 key={session.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -188,14 +207,25 @@ const InfiniteSessionsList: React.FC = () => {
                       big
                     />
                   </div>
-                  {!session.timeOut && session.type === 'ONE_TO_ONE' && (
-                    <button
-                      onClick={() => handleEndSession(session.id)}
-                      className="btn bg-red-500 hover:bg-red-600 text-white w-full rounded-lg py-2 mt-4 transition-colors"
-                    >
-                      End Session
-                    </button>
-                  )}
+                  <div className="flex space-x-2">
+                    {!session.timeOut &&
+                      session.type === SessionType.ONE_TO_ONE && (
+                        <button
+                          onClick={() => handleEndSession(session.id)}
+                          className="btn bg-red-500 hover:bg-red-600 text-white w-full rounded-lg py-2 transition-colors"
+                        >
+                          End Session
+                        </button>
+                      )}
+                    {session.status === SessionStatus.COMPLETED && (
+                      <button
+                        onClick={handleEditSessionClick(session)}
+                        className="btn bg-teal-500 hover:bg-teal-600 text-white w-full rounded-lg py-2 transition-colors"
+                      >
+                        Edit Times
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -205,7 +235,7 @@ const InfiniteSessionsList: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className=" p-6">
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -292,10 +322,12 @@ const InfiniteSessionsList: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
-        {data?.pages.map((page: SessionsData, pageIndex: number) =>
-          renderPage(page, pageIndex),
-        )}
+      <div className="overflow-y-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {data?.pages.map((page: SessionsData, pageIndex: number) =>
+            renderPage(page, pageIndex),
+          )}
+        </div>
         {hasNextPage && (
           <InView
             onChange={(inView) => {
@@ -319,11 +351,18 @@ const InfiniteSessionsList: React.FC = () => {
           </InView>
         )}
         {!hasNextPage && !isFetching && (
-          <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+          <div className="text-center py-6 text-gray-600 dark:text-gray-400">
             <p>No more sessions to load.</p>
           </div>
         )}
       </div>
+      {editingSession && (
+        <EditSessionTimesModal
+          isOpen={isEditModalOpen}
+          setIsOpen={setIsEditModalOpen}
+          session={editingSession}
+        />
+      )}
     </div>
   );
 };

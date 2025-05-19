@@ -8,52 +8,69 @@
 import React, { useState, useEffect } from 'react';
 import { InView } from 'react-intersection-observer';
 import { useDebounce } from '@/hooks/useDebounce';
-import { ServiceUser } from '@/types/serviceUser';
 import { useSearchServiceUsers } from '@/features/Search/hooks/useSearchServiceUsers';
 import { apiClient } from '@/lib/api-client';
 import CreateSessionModal from '@/features/Sessions/ui/modals/CreateSessionModal';
 import GroupSessionModal from '@/features/Sessions/ui/modals/GroupSessionModal';
 import { motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
+import { CreateAdmissionModal } from './CreateAdmissionModal';
+import { DischargeConfirmationModal } from './DischargeConfirmationModal';
+import { EditServiceUserModal } from './EditServiceUserModal';
+import { useModalStore } from '@/stores/modalStore';
+import { FiEdit } from 'react-icons/fi';
 
-type Admission = {
-  id: number;
-  serviceUser: { id: number; name: string };
-};
-
+type Admission = { id: number; serviceUser: { id: number; name: string } };
 type ActivityLog = {
   id: number;
   name: string;
   startDate: string;
   duration?: number;
 };
+type Ward = { id: number; name: string };
+type ServiceUser = {
+  id: number;
+  name: string;
+  nhsNumber: string;
+  admissions: {
+    id: number;
+    ward: { id: number; name: string };
+    dischargeDate: string | null;
+  }[];
+};
 
 const SearchServiceUsers: React.FC = () => {
   const [query, setQuery] = useState<string>('');
   const [includeDischarged, setIncludeDischarged] = useState<boolean>(false);
   const debouncedQuery = useDebounce<string>(query, 500);
-
   const [showOneToOneModal, setShowOneToOneModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [preselectedUserId, setPreselectedUserId] = useState<
     number | undefined
   >(undefined);
-
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
   const queryClient = useQueryClient();
+  const { setCreateAdmissionModal, setDischargeModal, setEditModal } =
+    useModalStore();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [admRes, actRes] = await Promise.all([
+        const [admRes, actRes, wardsRes] = await Promise.all([
           apiClient.get<Admission[]>('/api/admissions/active'),
           apiClient.get<ActivityLog[]>('/api/activities/active'),
+          apiClient.get<Ward[]>('/api/wards'),
         ]);
         setAdmissions(admRes);
         setActivities(actRes);
+        setWards(wardsRes);
       } catch (error) {
-        console.error('Failed to load admissions or activities:', error);
+        console.error(
+          'Failed to load admissions, activities, or wards:',
+          error,
+        );
       }
     };
     loadData();
@@ -67,6 +84,7 @@ const SearchServiceUsers: React.FC = () => {
     isLoading,
     isError,
     error,
+    refetch,
   } = useSearchServiceUsers({
     q: debouncedQuery,
     sortBy: 'name',
@@ -137,6 +155,12 @@ const SearchServiceUsers: React.FC = () => {
           </div>
           <div className="mt-6 flex gap-4">
             <button
+              onClick={() => setCreateAdmissionModal(true)}
+              className="btn bg-teal-500 hover:bg-teal-600 text-white transform hover:scale-105 transition-all duration-300 rounded-lg px-6 py-2"
+            >
+              Create Admission
+            </button>
+            <button
               onClick={() => handleCreateOneToOneClick()}
               className="btn bg-teal-500 hover:bg-teal-600 text-white transform hover:scale-105 transition-all duration-300 rounded-lg px-6 py-2"
             >
@@ -165,42 +189,68 @@ const SearchServiceUsers: React.FC = () => {
         {data?.pages.map((page, pageIndex: number) => (
           <React.Fragment key={pageIndex}>
             {Array.isArray(page.serviceUsers) &&
-              page.serviceUsers.map((user: ServiceUser) => (
-                <motion.div
-                  key={user.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="card bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all duration-300 rounded-lg border border-gray-200 dark:border-gray-700"
-                >
-                  <div className="card-body">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="card-title text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          {user.name}
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          NHS: {user.nhsNumber}
-                        </p>
-                        {user.admissions.length > 0 && (
+              page.serviceUsers.map((user: ServiceUser) => {
+                const latestAdmission = user.admissions?.[0];
+                const isAdmitted =
+                  latestAdmission && !latestAdmission.dischargeDate;
+                return (
+                  <motion.div
+                    key={user.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="card bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all duration-300 rounded-lg border border-gray-200 dark:border-gray-700"
+                  >
+                    <div className="card-body">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="card-title text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {user.name}
+                          </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            Ward: {user.admissions[0].ward.name} | Status:{' '}
-                            {user.admissions[0].dischargeDate
-                              ? 'Discharged'
-                              : 'Admitted'}
+                            NHS: {user.nhsNumber}
                           </p>
-                        )}
+                          {user.admissions.length > 0 && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Ward: {user.admissions[0].ward.name} | Status:{' '}
+                              {user.admissions[0].dischargeDate
+                                ? 'Discharged'
+                                : 'Admitted'}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditModal(true, user)}
+                            className="btn btn-sm btn-info flex items-center gap-1"
+                          >
+                            <FiEdit /> Edit
+                          </button>
+                          {isAdmitted && (
+                            <button
+                              onClick={() =>
+                                setDischargeModal(true, {
+                                  ...user,
+                                  admissions: [latestAdmission],
+                                })
+                              }
+                              className="btn btn-sm btn-error"
+                            >
+                              Discharge
+                            </button>
+                          )}
+                          <button
+                            className="btn btn-sm bg-teal-500 hover:bg-teal-600 text-white transform hover:scale-105 transition-all duration-300 rounded-lg"
+                            onClick={() => handleCreateOneToOneClick(user.id)}
+                          >
+                            Create Session
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        className="btn bg-teal-500 hover:bg-teal-600 text-white transform hover:scale-105 transition-all duration-300 rounded-lg"
-                        onClick={() => handleCreateOneToOneClick(user.id)}
-                      >
-                        Create Session
-                      </button>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
           </React.Fragment>
         ))}
       </div>
@@ -233,6 +283,9 @@ const SearchServiceUsers: React.FC = () => {
         </div>
       )}
 
+      <CreateAdmissionModal onAdmissionCreated={refetch} />
+      <DischargeConfirmationModal onDischarge={refetch} />
+      <EditServiceUserModal onEdit={refetch} wards={wards} />
       <CreateSessionModal
         isOpen={showOneToOneModal}
         onClose={() => setShowOneToOneModal(false)}
@@ -256,4 +309,5 @@ const SearchServiceUsers: React.FC = () => {
 };
 
 export default SearchServiceUsers;
+
 // src/features/ServiceUsers/ui/SearchServiceUsers.tsx

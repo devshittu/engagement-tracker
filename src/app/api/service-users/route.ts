@@ -104,4 +104,55 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export async function POST(req: NextRequest) {
+  const authResult = await authenticateRequest(req, 4, undefined, log);
+  if (authResult instanceof NextResponse) return authResult;
+
+  const { userId } = authResult;
+
+  try {
+    const { name, nhsNumber } = await req.json();
+
+    log('Creating service user', { name, nhsNumber });
+
+    if (!name || !nhsNumber) {
+      log('Invalid service user data');
+      return NextResponse.json(
+        { error: 'Name and NHS number are required' },
+        { status: 400 },
+      );
+    }
+
+    const existingUser = await prisma.serviceUser.findUnique({
+      where: { nhsNumber },
+    });
+
+    let serviceUser;
+    if (!existingUser) {
+      serviceUser = await prisma.serviceUser.create({
+        data: {
+          name,
+          nhsNumber,
+          createdById: userId,
+        },
+      });
+      log('New service user created', { id: serviceUser.id });
+    } else {
+      serviceUser = existingUser;
+      log('Using existing service user', { id: serviceUser.id });
+    }
+
+    return NextResponse.json(serviceUser, { status: 201 });
+  } catch (error: unknown) {
+    log('Failed to create service user', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { error: 'Failed to create service user' },
+      { status: 500 },
+    );
+  }
+}
+
 // src/app/api/service-users/route.ts

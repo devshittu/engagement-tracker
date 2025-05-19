@@ -1,23 +1,25 @@
 // @ts-nocheck
 // TODO: Temporary suppression of TypeScript errors for demo purposes.
 //       Re-enable type checking after resolving the issues.
-// src/features/Sessions/ui/dashboard/components/SessionGrid.tsx
+
 'use client';
 
 import React from 'react';
 import { ActiveSessionsResponse } from '@/features/Sessions/hooks/useActiveSessions';
 import GroupSessionCard from '@/features/Sessions/ui/cards/GroupSessionCard';
-import OneToOneSessionCard from './OneToOneSessionCard';
+import OneToOneSessionCard from '../../cards/OneToOneSessionCard';
 import { logger } from '@/lib/logger';
+import { Session } from '@prisma/client';
 
 type SessionGridProps = {
   oneToOneData?: ActiveSessionsResponse;
   groupData?: ActiveSessionsResponse;
-  onDecline: (session: any) => (event: React.MouseEvent) => void;
+  onDecline: (session: Session) => (event: React.MouseEvent) => void;
   onEndSession: (
     sessionId: number,
     serviceUserName: string,
   ) => (event: React.MouseEvent) => void;
+  onEditSession: (session: Session) => (event: React.MouseEvent) => void;
 };
 
 const SessionGrid: React.FC<SessionGridProps> = ({
@@ -25,6 +27,7 @@ const SessionGrid: React.FC<SessionGridProps> = ({
   groupData,
   onDecline,
   onEndSession,
+  onEditSession,
 }) => {
   const oneToOneSessions =
     'sessions' in (oneToOneData ?? {}) ? oneToOneData.sessions : [];
@@ -68,6 +71,7 @@ const SessionGrid: React.FC<SessionGridProps> = ({
             session.id,
             session.admission.serviceUser.name,
           )}
+          onEditSession={onEditSession(session)}
         />
       ))}
     </div>
