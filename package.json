@@ -20,7 +20,7 @@
     "prisma:push": "dotenv -e .env.local -- npx prisma db push",
     "prisma:studio": "dotenv -e .env.local -- npx prisma studio",
     "prisma:generate-schema": "dotenv -e .env.local -- ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/generate-schema.ts",
-    "prisma:generate-:schema:prod": "dotenv -e .env.prod ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/generate-schema.ts",
+    "prisma:generate-schema:prod": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/generate-schema.ts",
     "prisma:migrate:dev": "dotenv -e .env.local -- npx prisma migrate dev --schema=prisma/schema.prisma",
     "prisma:generate": "npx prisma generate --schema=prisma/schema.prisma",
     "prisma:seed:dev": "dotenv -e .env.local -- npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts",
